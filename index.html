@@ -5,18 +5,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Liquid Toggle Knockout Backdrop</title>
   <link rel="stylesheet" href="style.css" />
-  <script type="module" src="scripts.js"></script>
+  <script type="module" src="scripts.js?v=2"></script>
+  <style>
+    @font-face {
+      font-family: 'Frutiger';
+      src: url('fonts/frutiger/Frutiger.ttf') format('truetype');
+    }
+
+    .lights-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #f3f3f3;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .light {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0;
+      animation: fadeInOut 4s ease-in-out infinite;
+    }
+
+    .light.blue {
+      background: radial-gradient(circle, rgba(0, 120, 212, 0.7) 0%, transparent 70%);
+    }
+
+    .light.green {
+      background: radial-gradient(circle, rgba(16, 137, 62, 0.7) 0%, transparent 70%);
+    }
+
+    .light.pink {
+      background: radial-gradient(circle, rgba(232, 17, 127, 0.7) 0%, transparent 70%);
+    }
+
+    .arrow {
+    font-family: 'Frutiger', sans-serif;
+    font-size: 20px;
+}
+
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+
+    /* critical rule to avoid flash-of-unstyled-content for the pop-in control */
+    .liquid-toggle.pre-pop {
+      opacity: 0;
+      transform: translate3d(0, 24px, 0) scale(.6);
+      filter: blur(6px);
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .liquid-toggle.pre-pop { opacity: 1; transform: none; filter: none; pointer-events: auto; }
+    }
+  </style>
+  <noscript>
+    <style>
+      /* If JS is disabled, ensure the toggle is visible */
+      .liquid-toggle.pre-pop { opacity: 1 !important; transform: none !important; filter: none !important; pointer-events: auto !important; }
+    </style>
+  </noscript>
 </head>
 <body>
+  <div class="lights-background" id="lightsContainer"></div>
+  
   <main>
         <div class="arrow arrow--main">
-          <span>tap and drag.</span>
-          <svg  viewBox="0 0 77 139" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M63.9153 0.37541C62.6706 1.85361 63.1403 31.3942 64.7373 54.4353C65.5593 65.9325 67.0389 77.8285 68.8708 87.6362C71.0784 99.4618 71.3837 102.113 70.7496 103.99C70.1155 105.914 68.6594 106.384 61.9191 106.876C51.2566 107.674 49.3543 108.003 32.6561 112.038C25.9157 113.681 18.8936 115.112 18.7057 114.924C18.6352 114.877 19.1754 113.939 19.8799 112.859C21.3126 110.63 21.5944 109.692 21.1951 108.401C20.6784 106.642 18.5882 105.656 16.8973 106.36C16.451 106.548 14.807 107.604 13.257 108.683C10.5797 110.56 9.0531 111.405 4.54388 113.47C-0.435059 115.745 -1.37449 119.734 1.98395 124.404C3.48702 126.515 4.9901 127.829 8.65384 130.246C12.8578 132.991 16.2397 134.61 20.561 135.971C22.4868 136.581 24.9293 137.426 25.9627 137.872C27.137 138.364 27.9355 138.575 28.0764 138.435C28.9219 137.59 24.718 133.249 18.3534 128.51C15.8404 126.633 13.4684 124.826 13.0691 124.521L12.3646 123.934L13.304 123.77C19.8565 122.667 28.1468 120.861 35.8736 118.819C45.1269 116.379 51.2566 115.018 55.8128 114.385C64.2441 113.211 68.0018 112.578 69.4579 112.132C72.558 111.17 74.977 108.824 75.8929 105.867C76.8559 102.77 76.5505 99.1568 74.2959 87.2842C71.5951 73.0888 70.1155 61.1928 68.5185 41.1785C67.5086 28.5551 66.3813 11.6614 66.1465 5.04465C65.9821 0.750832 65.7707 0 64.7608 0C64.4555 0 64.0797 0.164239 63.9153 0.37541Z" fill="currentColor"/>
-          </svg>
-            
+          <span>Open the portal?</span>
         </div>
-        <button aria-label="toggle" aria-pressed="false" class="liquid-toggle">
+  <button aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop">
           <div class="debug debug--knockout">
             <div class="arrow">
               <span>knockout backdrop.</span>
@@ -126,63 +189,317 @@
           </filter>
         </defs>
       </svg>
-      <a
-        aria-label="Follow Jhey"
-        class="bear-link"
-        href="https://twitter.com/intent/follow?screen_name=jh3yy"
-        target="_blank"
-        rel="noreferrer noopener"
-      >
-        <svg
-          class="w-9"
-          viewBox="0 0 969 955"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <circle
-            cx="161.191"
-            cy="320.191"
-            r="133.191"
-            stroke="currentColor"
-            stroke-width="20"
-          ></circle>
-          <circle
-            cx="806.809"
-            cy="320.191"
-            r="133.191"
-            stroke="currentColor"
-            stroke-width="20"
-          ></circle>
-          <circle
-            cx="695.019"
-            cy="587.733"
-            r="31.4016"
-            fill="currentColor"
-          ></circle>
-          <circle
-            cx="272.981"
-            cy="587.733"
-            r="31.4016"
-            fill="currentColor"
-          ></circle>
-          <path
-            d="M564.388 712.083C564.388 743.994 526.035 779.911 483.372 779.911C440.709 779.911 402.356 743.994 402.356 712.083C402.356 680.173 440.709 664.353 483.372 664.353C526.035 664.353 564.388 680.173 564.388 712.083Z"
-            fill="currentColor"
-          ></path>
-          <rect
-            x="310.42"
-            y="448.31"
-            width="343.468"
-            height="51.4986"
-            fill="#FF1E1E"
-          ></rect>
-          <path
-            fill-rule="evenodd"
-            clip-rule="evenodd"
-            d="M745.643 288.24C815.368 344.185 854.539 432.623 854.539 511.741H614.938V454.652C614.938 433.113 597.477 415.652 575.938 415.652H388.37C366.831 415.652 349.37 433.113 349.37 454.652V511.741L110.949 511.741C110.949 432.623 150.12 344.185 219.845 288.24C289.57 232.295 384.138 200.865 482.744 200.865C581.35 200.865 675.918 232.295 745.643 288.24Z"
-            fill="currentColor"
-          ></path>
-        </svg>
-      </a>
+      
+  <script>
+    // Check if user has visited before using cookies
+    if (document.cookie.includes("visited=true")) {
+      console.log("User has visited the site before.");
+    } else {
+      console.log("First visit to the site.");
+      document.cookie = "visited=true; max-age=31536000; path=/"; // Expires in 1 year
+    }
+
+    const colors = ['blue', 'green', 'pink'];
+    const container = document.getElementById('lightsContainer');
+    
+    function createLight() {
+      const light = document.createElement('div');
+      light.className = `light ${colors[Math.floor(Math.random() * colors.length)]}`;
+      
+      const size = Math.random() * 300 + 200;
+      light.style.width = `${size}px`;
+      light.style.height = `${size}px`;
+      light.style.left = `${Math.random() * 100}%`;
+      light.style.top = `${Math.random() * 100}%`;
+      light.style.animationDelay = `${Math.random() * 2}s`;
+      light.style.animationDuration = `${Math.random() * 3 + 3}s`;
+      
+      container.appendChild(light);
+      
+      setTimeout(() => {
+        light.remove();
+      }, 8000);
+    }
+    
+    setInterval(createLight, 800);
+    
+    for (let i = 0; i < 5; i++) {
+      setTimeout(createLight, i * 300);
+    }
+
+    // Audio setup with Web Audio API
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audio = new Audio('portal.mp3');
+    audio.loop = true;
+  // small pop sound used for the pop-in animation
+  const popSound = new Audio('pop.mp3');
+  popSound.preload = 'auto';
+  popSound.volume = 0.9;
+    
+    const source = audioContext.createMediaElementSource(audio);
+    const lowShelf = audioContext.createBiquadFilter();
+    const highShelf = audioContext.createBiquadFilter();
+    const gainNode = audioContext.createGain();
+    
+    // Low shelf filter (boost low end)
+    lowShelf.type = 'lowshelf';
+    lowShelf.frequency.value = 200;
+    lowShelf.gain.value = 16; // Boost bass significantly
+    
+    // High shelf filter (reduce high end)
+    highShelf.type = 'highshelf';
+    highShelf.frequency.value = 2000;
+    highShelf.gain.value = -32; // Cut highs for muffled sound
+    
+    // Reduce overall volume for "another room" effect
+    gainNode.gain.value = 0.08;
+    
+    // Connect the audio graph
+    source.connect(lowShelf);
+    lowShelf.connect(highShelf);
+    highShelf.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Start audio on first user interaction
+    let audioStarted = false;
+    const startAudio = () => {
+      if (!audioStarted) {
+        audioContext.resume();
+        audio.play().catch(e => console.log('Audio play failed:', e));
+        audioStarted = true;
+      }
+    };
+    
+    document.addEventListener('click', startAudio, { once: true });
+    document.addEventListener('touchstart', startAudio, { once: true });
+    document.addEventListener('keydown', startAudio, { once: true });
+    
+    // Listen for toggle state changes
+    const toggle = document.querySelector('.liquid-toggle');
+    if (toggle) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'aria-pressed') {
+            const isPressed = toggle.getAttribute('aria-pressed') === 'true';
+            const currentTime = audioContext.currentTime;
+            
+            // Cancel any scheduled changes
+            lowShelf.gain.cancelScheduledValues(currentTime);
+            highShelf.gain.cancelScheduledValues(currentTime);
+            gainNode.gain.cancelScheduledValues(currentTime);
+            
+            // Set current values
+            lowShelf.gain.setValueAtTime(lowShelf.gain.value, currentTime);
+            highShelf.gain.setValueAtTime(highShelf.gain.value, currentTime);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
+            
+            if (isPressed) {
+              // Transition to normal audio over 2 seconds
+              lowShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
+              highShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
+              gainNode.gain.linearRampToValueAtTime(1, currentTime + 2);
+            } else {
+              // Transition back to muffled over 2 seconds
+              lowShelf.gain.linearRampToValueAtTime(12, currentTime + 2);
+              highShelf.gain.linearRampToValueAtTime(-18, currentTime + 2);
+              gainNode.gain.linearRampToValueAtTime(0.4, currentTime + 2);
+            }
+            // create a bright flash that expands from the toggle
+            triggerWhiteFlash(isPressed);
+          }
+        });
+      });
+      
+      observer.observe(toggle, { attributes: true });
+
+      // Flash effect: expands white circle from toggle to fill viewport and leave page white
+      function triggerWhiteFlash(activate) {
+        console.log('triggerWhiteFlash called, activate=', activate);
+        // respect reduced motion — if reduced, just set page to white immediately
+        const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const body = document.body;
+
+        if (!activate) {
+          // If turning off, remove flashed state
+          if (body.classList.contains('is-flashed')) {
+            body.classList.remove('is-flashed');
+          }
+          return;
+        }
+
+        if (reduced) {
+          body.classList.add('is-flashed');
+          return;
+        }
+
+        // compute center of toggle
+        const rect = toggle.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        // compute farthest corner distance
+        const w = Math.max(cx, window.innerWidth - cx);
+        const h = Math.max(cy, window.innerHeight - cy);
+        const radius = Math.hypot(w, h);
+
+        // create overlay (remove existing if any)
+        let overlay = document.querySelector('.white-flash-overlay');
+        if (overlay) overlay.remove();
+        overlay = document.createElement('div');
+        overlay.className = 'white-flash-overlay';
+
+        // set critical inline styles to avoid depending on external CSS loading
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = '#fff';
+        overlay.style.zIndex = '2147483647';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.opacity = '0';
+        overlay.style.clipPath = `circle(0px at ${cx}px ${cy}px)`;
+        overlay.style.transition = 'clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear';
+
+        // append to body for consistent stacking
+        document.body.appendChild(overlay);
+
+        // debug: log overlay presence and computed style
+        console.log('overlay appended:', !!overlay, overlay.getBoundingClientRect());
+        console.log('support clip-path?', CSS && CSS.supports && CSS.supports('clip-path', 'circle(1px at 0 0)'));
+
+        // force paint
+        overlay.getBoundingClientRect();
+
+        // expand to fill and fade in
+        requestAnimationFrame(() => {
+          overlay.style.opacity = '1';
+          // if clip-path isn't supported, fallback to immediate full white
+          if (!(CSS && CSS.supports && CSS.supports('clip-path', 'circle(1px at 0 0)'))) {
+            overlay.style.clipPath = `circle(${Math.ceil(radius)}px at ${cx}px ${cy}px)`;
+            // short timeout to ensure visuals update
+            setTimeout(() => {
+              body.classList.add('is-flashed');
+              overlay.remove();
+            }, 50);
+            return;
+          }
+
+          overlay.style.clipPath = `circle(${Math.ceil(radius)}px at ${cx}px ${cy}px)`;
+        });
+
+        let done = false;
+        overlay.addEventListener('transitionend', (ev) => {
+          if (done) return;
+          // we only care about clip-path transition end
+          if (ev && ev.propertyName && ev.propertyName !== 'clip-path') return;
+          done = true;
+          // once expanded, keep page white and remove overlay
+          body.classList.add('is-flashed');
+          overlay.remove();
+        }, { once: true });
+      }
+
+      // expose function for manual testing
+      window.triggerWhiteFlash = (activate = true) => triggerWhiteFlash(activate);
+
+      // Play watery jello "pop-in" animation on page start.
+      // Schedule it after load (or immediately if already loaded) so CSS and fonts have been applied.
+      const schedulePopIn = () => {
+        // don't run if user prefers reduced motion — but ensure toggle becomes visible
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          toggle.classList.remove('pre-pop');
+          return;
+        }
+        // small delay so browser can paint before animating
+        setTimeout(() => {
+          // prefer the robust trigger that falls back to WAAPI when needed
+          toggle.classList.remove('pre-pop');
+          if (window.triggerJello) window.triggerJello();
+          else {
+            toggle.classList.remove('pop-in'); void toggle.offsetWidth; toggle.classList.add('pop-in');
+          }
+        }, 200);
+      };
+
+      if (document.readyState === 'complete') schedulePopIn();
+      else window.addEventListener('load', schedulePopIn, { once: true });
+
+  // ensure pre-pop is cleared if any animation starts
+  toggle.addEventListener('animationstart', () => toggle.classList.remove('pre-pop'));
+
+      // remove the class after the animation finishes to keep DOM clean
+      toggle.addEventListener('animationend', (e) => {
+        if (e.animationName === 'jello-pop') toggle.classList.remove('pop-in');
+      });
+
+      // Expose a robust trigger for debugging — tries CSS class then falls back to Web Animations
+      window.triggerJello = () => {
+        const el = document.querySelector('.liquid-toggle');
+        if (!el) return console.log('switch not found');
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          console.log('prefers-reduced-motion: reduce — skipping animation');
+          return;
+        }
+
+  // ensure element isn't stuck hidden
+  el.classList.remove('pre-pop');
+        // ensure element isn't stuck hidden
+        el.classList.remove('pre-pop');
+        // retrigger CSS animation
+        el.classList.remove('pop-in');
+        void el.offsetWidth; // force reflow
+        el.classList.add('pop-in');
+
+        // play pop sound when animation starts (best-effort, may be blocked until user interacts)
+        try {
+          popSound.currentTime = 0;
+          popSound.play().catch(e => console.log('Pop sound play prevented:', e));
+        } catch (e) {
+          console.log('Pop sound error:', e);
+        }
+
+        const cssAnim = getComputedStyle(el).animationName;
+        if (cssAnim && cssAnim !== 'none') {
+          console.log('CSS animation applied:', cssAnim);
+          return;
+        }
+
+        // Fallback: use Web Animations API for visible effect
+        console.log('CSS animation not applied; using Web Animations fallback');
+        const duration = 900;
+        const easing = 'cubic-bezier(.22,.9,.33,1)';
+
+        const jelloFrames = [
+          { transform: 'translate3d(0,24px,0) scale(.6) skewX(0) skewY(0)', opacity: 0, filter: 'blur(6px)' },
+          { offset: 0.4, transform: 'translate3d(0,-8px,0) scale(1.18) skewX(-3deg) skewY(3deg)', opacity: 1, filter: 'blur(2px)' },
+          { offset: 0.55, transform: 'translate3d(0,8px,0) scale(.92) skewX(3deg) skewY(-3deg)' },
+          { offset: 0.7, transform: 'translate3d(0,-4px,0) scale(1.06) skewX(-1.5deg) skewY(1.5deg)' },
+          { offset: 0.85, transform: 'translate3d(0,2px,0) scale(.99) skewX(.6deg) skewY(-.6deg)' },
+          { transform: 'translate3d(0,0,0) scale(1) skewX(0) skewY(0)', opacity: 1, filter: 'none' }
+        ];
+
+        el.animate(jelloFrames, { duration, easing, fill: 'forwards' });
+
+        // play pop sound for WAAPI fallback as well
+        try {
+          popSound.currentTime = 0;
+          popSound.play().catch(e => console.log('Pop sound play prevented:', e));
+        } catch (e) {
+          console.log('Pop sound error:', e);
+        }
+
+        const inner = el.querySelector('.liquid__track');
+        if (inner) {
+          const ripple = [
+            { transform: 'scaleX(1) scaleY(1)' },
+            { offset: 0.3, transform: 'scaleX(1.08) scaleY(.92)' },
+            { offset: 0.55, transform: 'scaleX(.92) scaleY(1.06)' },
+            { offset: 0.8, transform: 'scaleX(1.03) scaleY(.97)' },
+            { transform: 'scaleX(1) scaleY(1)' }
+          ];
+          inner.animate(ripple, { duration, easing, fill: 'forwards' });
+        }
+      };
+    }
+  </script>
 </body>
 </html>

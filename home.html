@@ -4,13 +4,70 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Home Page</title>
-  <link rel="stylesheet" href="style.css" />
-  <script type="module" src="scripts.js"></script>
+  <link rel="stylesheet" href="home.css" />
+    <!-- GSAP Core -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <!-- GSAP Plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+    <script src="https://assets.codepen.io/16327/SplitText3.min.js"></script>
+    <!-- Lenis -->
+    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.35/dist/lenis.min.js"></script>
 </head>
 <body>
   <main>
-    <h1>Welcome to the Home Page</h1>
-    <p>This is the home page of the website.</p>
-  </main>
+    <section class="intro">
+        <h1>Welcome to the Home Page</h1>
+        <p>This is the introductory section of the home page.</p>
+    </section>
+
+    <section class="sticky-cols">
+        <div class="sticky-cols-weapper">
+            <div class="col col-1">
+                <div class="col-content">
+                    <div class="col-content-wrapper">
+                        <h2>Sticky Column 1</h2>
+                        <p>This column stays in place while you scroll.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col col-2">
+                <div class="col-img col-img-1">
+                    <div class="col-img-wrapper">
+                        <img src="https://preview.redd.it/rain-girls-v0-w10dii4qt17g1.jpeg?width=1080&crop=smart&auto=webp&s=976cc71babe08b8f956aec581f0691c1e434b363" alt="">
+                    </div>
+                </div>
+                <div class="col-img col-img-2">
+                    <div class="col-img-wrapper">
+                        <img src="https://preview.redd.it/robux-roblox-cheap-v0-9ro0c7uxn87g1.jpeg?width=640&crop=smart&auto=webp&s=0f4956a65f0394ae575eb4963717e7af1938bdcd" alt="">
+                    </div>
+                </div>
+            </div>
+            <div class="col col-3">
+                <div class="col-content-wrapper">
+                    <h2>Sticky Column 2</h2>
+                    <p>This is another sticky column with content.</p>
+                </div>
+                <div class="col-content-wrapper-2">
+                    <h2>Sticky Column 3</h2>
+                    <p>More content in the third sticky column.</p>
+                </div>
+            </div>
+            <div class="col col-4">
+                <div class="col-img">
+                    <div class="col-img-wrapper">
+                        <img src="https://preview.redd.it/rate-my-setup-1-10-v0-3qfhr5lvwr6g1.jpeg?width=1080&crop=smart&auto=webp&s=dbf2ed512fc029af186f1341ba192728b6f829af" alt="">
+                    </div>
+                </div>                
+            </div>
+        </div>
+    </section>
+
+    <section class="outro">
+        <h2>Thank you for visiting!</h2>
+        <p>We hope you found what you were looking for.</p>
+    </section>
+</main>
 </body>
+</body>
+<script src="home.js"></script>
 </html>

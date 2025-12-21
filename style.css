@@ -1,5 +1,10 @@
 @import url('https://unpkg.com/normalize.css') layer(normalize);
 
+@font-face {
+  font-family: 'Frutiger';
+  src: url('fonts/frutiger/Frutiger.ttf') format('truetype');
+}
+
 @layer normalize, base, demo, toggle, transitions, debug;
 
 @layer debug {
@@ -26,6 +31,7 @@
         position: absolute;
         scale: -1 1;
       }
+      /* use Frutiger for the main "tap and drag" callout */
     }
   }
   [data-debug=true] {
@@ -274,6 +280,46 @@
     outline-offset: 2px;
   }
 
+  /* hidden pre-animation state so the control doesn't flash in before pop-in */
+  .liquid-toggle.pre-pop {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(.6) skewX(0) skewY(0);
+    filter: blur(6px);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-toggle.pre-pop {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      pointer-events: auto;
+    }
+  }
+
+  /* Full-screen flash overlay used when switch toggles */
+  .white-flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 99999;
+    pointer-events: none;
+    /* start with a tiny circle at the toggle position */
+    clip-path: circle(0px at 0px 0px);
+    transition: clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear;
+    opacity: 1;
+  }
+
+  /* When page is flashed keep a clean white bg */
+  .is-flashed {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .white-flash-overlay { transition: none; }
+  }
+
   .liquid-toggle:focus-visible {
     outline: 4px solid color-mix(in oklch, var(--checked), #0000);
     border-color: var(--w7-el-bd-h);
@@ -393,6 +439,77 @@
     left: var(--border);
     border-radius: var(--w7-el-bdr);
 
+    /* watery jello ripple used on initial pop-in */
+    --jello-duration: 900ms;
+
+  /* Pop-in (watery jello) animation for the switch */
+  @keyframes jello-pop {
+    0% {
+      transform: translate3d(0, 24px, 0) scale(.6) skewX(0deg) skewY(0deg);
+      opacity: 0;
+      filter: blur(6px);
+    }
+    40% {
+      transform: translate3d(0, -8px, 0) scale(1.18) skewX(-3deg) skewY(3deg);
+      opacity: 1;
+      filter: blur(2px);
+    }
+    55% {
+      transform: translate3d(0, 8px, 0) scale(.92) skewX(3deg) skewY(-3deg);
+    }
+    70% {
+      transform: translate3d(0, -4px, 0) scale(1.06) skewX(-1.5deg) skewY(1.5deg);
+    }
+    85% {
+      transform: translate3d(0, 2px, 0) scale(.99) skewX(.6deg) skewY(-.6deg);
+    }
+    100% {
+      transform: translate3d(0, 0, 0) scale(1) skewX(0) skewY(0);
+      opacity: 1;
+      filter: none;
+    }
+  }
+
+  /* small inner ripple to make the liquid wobble */
+  @keyframes liquid-ripple {
+    0% { transform: scaleX(1) scaleY(1); }
+    30% { transform: scaleX(1.08) scaleY(.92); }
+    55% { transform: scaleX(.92) scaleY(1.06); }
+    80% { transform: scaleX(1.03) scaleY(.97); }
+    100% { transform: scaleX(1) scaleY(1); }
+  }
+
+  /* class toggled on page load */
+  .liquid-toggle.pop-in {
+    /* stronger rule to ensure animation applies when toggled from console */
+    animation-name: jello-pop !important;
+    animation-duration: var(--jello-duration) !important;
+    animation-timing-function: cubic-bezier(.22,.9,.33,1) !important;
+    animation-fill-mode: both !important;
+    transform-origin: 50% 50%;
+    /* subtle pop shadow so you can see it triggered even if animation is blocked */
+    box-shadow: 0 24px 48px rgba(0,0,0,0.12) inset, 0 12px 30px rgba(0,0,0,0.12);
+  }
+
+  .liquid-toggle.pop-in .indicator__liquid .liquid__track,
+  .liquid-toggle.pop-in .indicator__liquid .liquid__shadow {
+    animation-name: liquid-ripple !important;
+    animation-duration: var(--jello-duration) !important;
+    animation-timing-function: cubic-bezier(.22,.9,.33,1) !important;
+    animation-fill-mode: both !important;
+    transform-origin: 50% 50%;
+  }
+
+  /* Respect user's reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-toggle.pop-in,
+    .liquid-toggle.pop-in .indicator__liquid .liquid__track,
+    .liquid-toggle.pop-in .indicator__liquid .liquid__shadow {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+
     .shadow {
       opacity: 0;
       content: '';
@@ -496,26 +613,10 @@
       Helvetica, Arial, sans-serif, system-ui;
   }
 
-  body::before {
-    --size: 45px;
-    --line: color-mix(in hsl, canvasText, transparent 80%);
-    content: '';
-    height: 100vh;
-    width: 100vw;
-    position: fixed;
-    background: linear-gradient(
-          90deg,
-          var(--line) 1px,
-          transparent 1px var(--size)
-        )
-        calc(var(--size) * 0.36) 50% / var(--size) var(--size),
-      linear-gradient(var(--line) 1px, transparent 1px var(--size)) 0%
-        calc(var(--size) * 0.32) / var(--size) var(--size);
-    mask: linear-gradient(-20deg, transparent 60%, white);
-    top: 0;
-    transform-style: flat;
-    pointer-events: none;
-    z-index: -1;
+  .intro,
+  .sticky-cols,
+  .outro {
+    font-family: 'Frutiger', sans-serif;
   }
 
   .bear-link {
@@ -551,6 +652,4 @@
   }
 }
 
-div.tp-dfwv {
-  width: 280px;
-}
+

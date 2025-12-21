@@ -1,6 +1,5 @@
 import gsap from 'https://cdn.skypack.dev/gsap@3.13.0'
 import Draggable from 'https://cdn.skypack.dev/gsap@3.13.0/Draggable'
-import { Pane } from 'https://cdn.skypack.dev/tweakpane@4.0.4'
 
 gsap.registerPlugin(Draggable)
 
@@ -18,10 +17,6 @@ const config = {
   mapped: false,
   debug: false,
 }
-
-const ctrl = new Pane({
-  title: 'config',
-})
 
 const update = () => {
   gsap.set('#goo feGaussianBlur', {
@@ -49,63 +44,6 @@ const update = () => {
   toggle.style.setProperty('--hue', config.hue)
 }
 
-const sync = (event) => {
-  if (
-    !document.startViewTransition ||
-    event.target.controller.view.labelElement.innerText !== 'theme'
-  )
-    return update()
-  document.startViewTransition(() => update())
-}
-
-const debugSettings = ctrl.addFolder({ title: 'debug', expanded: false })
-
-debugSettings.addBinding(config, 'debug')
-debugSettings.addBinding(config, 'active')
-debugSettings.addBinding(config, 'complete', {
-  min: 0,
-  max: 100,
-  label: 'complete (%)',
-  step: 1,
-})
-
-const behaviorSettings = ctrl.addFolder({ title: 'behavior', expanded: false })
-behaviorSettings.addBinding(config, 'bounce')
-behaviorSettings.addBinding(config, 'mapped')
-behaviorSettings.addBinding(config, 'bubble')
-behaviorSettings.addBinding(config, 'delta')
-behaviorSettings.addBinding(config, 'hue', {
-  min: 0,
-  max: 359,
-  step: 1,
-})
-const settings = ctrl.addFolder({
-  title: 'filter',
-  disabled: false,
-  expanded: false,
-})
-settings.addBinding(config, 'deviation', {
-  min: 0,
-  max: 50,
-  step: 1,
-  label: 'stdDeviation',
-})
-settings.addBinding(config, 'alpha', {
-  min: 0,
-  max: 50,
-  step: 1,
-  label: 'alpha',
-})
-ctrl.addBinding(config, 'theme', {
-  label: 'theme',
-  options: {
-    system: 'system',
-    light: 'light',
-    dark: 'dark',
-  },
-})
-
-ctrl.on('change', sync)
 update()
 // this is the CSS from going :active
 // .liquid-toggle:active .indicator--masked .mask {
@@ -278,21 +216,4 @@ toggle.addEventListener('keyup', (e) => {
   if (e.key === ' ') {
     toggleState()
   }
-})
-
-// make tweakpane panel draggable
-const tweakClass = 'div.tp-dfwv'
-const d = Draggable.create(tweakClass, {
-  type: 'x,y',
-  allowEventDefault: true,
-  trigger: tweakClass + ' button.tp-rotv_b',
-})
-document.querySelector(tweakClass).addEventListener('dblclick', () => {
-  gsap.to(tweakClass, {
-    x: `+=${d[0].x * -1}`,
-    y: `+=${d[0].y * -1}`,
-    onComplete: () => {
-      gsap.set(tweakClass, { clearProps: 'all' })
-    },
-  })
 })
