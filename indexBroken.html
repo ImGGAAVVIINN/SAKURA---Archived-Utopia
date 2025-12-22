@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Liquid Toggle Knockout Backdrop</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- scripts.js will be loaded dynamically by startEverything() so mobile can be blocked -->
+  <!-- Windows 7 styles for buttons from 7.css -->
+  <link rel="stylesheet" href="https://khang-nd.github.io/7.css/7.css" />
   <style>
     @font-face {
       font-family: 'Frutiger';
@@ -44,13 +45,9 @@
     }
 
     .arrow {
-      font-family: 'Frutiger', sans-serif;
-      font-size: 20px;
-    }
-
-    .mobile-block-overlay{
-      font-family: 'Frutiger';
-    }
+    font-family: 'Frutiger', sans-serif;
+    font-size: 20px;
+}
 
     @keyframes fadeInOut {
       0%, 100% { opacity: 0; transform: scale(0.8); }
@@ -81,7 +78,7 @@
   
   <main>
         <div class="arrow arrow--main">
-          <span>Open the portal?</span>
+          <span>tap and drag.</span>
         </div>
   <button aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop">
           <div class="debug debug--knockout">
@@ -203,84 +200,172 @@
       document.cookie = "visited=true; max-age=31536000; path=/"; // Expires in 1 year
     }
 
-    
+  // Mobile blocking: show a screen recommending PC for full experience
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // main initialization — wrapped so we can delay it on mobile
+    function showMobileBlockScreen() {
+      // create full-screen overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'mobile-block-screen';
+      // mark document so underlying visuals are hidden while overlay is present
+      document.documentElement.classList.add('mobile-blocking');
+      overlay.innerHTML = `
+        <div class="window active" style="width: min(560px, 95%);">
+          <div class="title-bar">
+            <div class="title-bar-text">Portal Experience</div>
+            <div class="title-bar-controls">
+              <button aria-label="Close" class="title-bar-btn is-close" id="closeWindow"></button>
+            </div>
+          </div>
+          <div class="window-body has-space">
+            <div style="display:flex; gap:1rem; align-items:center;">
+              <img src="pcIcon.png" alt="PC recommended" class="mobile-block-icon" />
+              <div>
+                <h2>Best viewed on PC</h2>
+                <p style="margin:0;">This site has audio and advanced animations that work best on a PC. For the full experience, please open the site on a desktop or laptop.</p>
+              </div>
+            </div>
+            <div class="mobile-block-actions" style="margin-top:1rem;">
+              <button class="win7-btn win7-btn-primary" id="runAnyway">Run anyway</button>
+            </div>
+          </div>
+        </div>`;
+
+      document.body.appendChild(overlay);
+
+      // prevent any interaction with the page underneath
+      overlay.addEventListener('click', (e) => e.stopPropagation());
+
+      document.getElementById('runAnyway').addEventListener('click', () => {
+        overlay.remove();
+        document.documentElement.classList.remove('mobile-blocking');
+        startEverything();
+      });
+
+      // Close button behavior: close removes overlay but DOES NOT start heavy content; we also remove the blocking so page is usable
+        document.getElementById('closeWindow').addEventListener('click', (e) => {
+          // noop on purpose: the close button is decorative only on mobile for this experience
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Close button clicked (noop)');
+          });
+      }
+
+    // If on mobile show the screen and do not initialize heavy features
+    if (isMobileDevice) {
+      // defer DOMContentLoaded if body not ready
+      if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', showMobileBlockScreen, { once: true });
+      } else showMobileBlockScreen();
+      // do not continue initializing the heavy site now
+    }
+
+    // main initialization wrapped so we can call it after 'Run anyway'
     function startEverything() {
-      const colors = ['blue', 'green', 'pink'];
-      const container = document.getElementById('lightsContainer');
-      
-      function createLight() {
-        const light = document.createElement('div');
-        light.className = `light ${colors[Math.floor(Math.random() * colors.length)]}`;
-        
-        const size = Math.random() * 300 + 200;
-        light.style.width = `${size}px`;
-        light.style.height = `${size}px`;
-        light.style.left = `${Math.random() * 100}%`;
-        light.style.top = `${Math.random() * 100}%`;
-        light.style.animationDelay = `${Math.random() * 2}s`;
-        light.style.animationDuration = `${Math.random() * 3 + 3}s`;
-        
-        container.appendChild(light);
-        
-        setTimeout(() => {
-          light.remove();
-        }, 8000);
-      }
-      
-      setInterval(createLight, 800);
-      
-      for (let i = 0; i < 5; i++) {
-        setTimeout(createLight, i * 300);
-      }
+  // audio variables (declared early so helper functions can reference them)
+  let audioContext = null;
+  let audio = null;
+  let lowShelf = null;
+  let highShelf = null;
+  let gainNode = null;
+  let audioCreated = false;
 
-    // Audio setup with Web Audio API
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const audio = new Audio('sounds/portal.mp3');
-    audio.loop = true;
-  // small pop sound used for the pop-in animation
-  const popSound = new Audio('sounds/pop.mp3');
-  popSound.preload = 'auto';
-  popSound.volume = 0.9;
+  const colors = ['blue', 'green', 'pink'];
+    const container = document.getElementById('lightsContainer');
     
-    const source = audioContext.createMediaElementSource(audio);
-    const lowShelf = audioContext.createBiquadFilter();
-    const highShelf = audioContext.createBiquadFilter();
-    const gainNode = audioContext.createGain();
+    function createLight() {
+      const light = document.createElement('div');
+      light.className = `light ${colors[Math.floor(Math.random() * colors.length)]}`;
+      
+      const size = Math.random() * 300 + 200;
+      light.style.width = `${size}px`;
+      light.style.height = `${size}px`;
+      light.style.left = `${Math.random() * 100}%`;
+      light.style.top = `${Math.random() * 100}%`;
+      light.style.animationDelay = `${Math.random() * 2}s`;
+      light.style.animationDuration = `${Math.random() * 3 + 3}s`;
+      
+      container.appendChild(light);
+      
+      setTimeout(() => {
+        light.remove();
+      }, 8000);
+    }
     
-    // Low shelf filter (boost low end)
-    lowShelf.type = 'lowshelf';
-    lowShelf.frequency.value = 200;
-    lowShelf.gain.value = 16; // Boost bass significantly
-    
-    // High shelf filter (reduce high end)
-    highShelf.type = 'highshelf';
-    highShelf.frequency.value = 2000;
-    highShelf.gain.value = -32; // Cut highs for muffled sound
-    
-    // Reduce overall volume for "another room" effect
-    gainNode.gain.value = 0.08;
-    
-    // Connect the audio graph
-    source.connect(lowShelf);
-    lowShelf.connect(highShelf);
-    highShelf.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    // Start audio on first user interaction
-    let audioStarted = false;
-    const startAudio = () => {
-      if (!audioStarted) {
-        audioContext.resume();
-        audio.play().catch(e => console.log('Audio play failed:', e));
-        audioStarted = true;
+    let lightsInterval = null;
+    function startLights() {
+      createLight();
+      for (let i = 1; i < 5; i++) setTimeout(createLight, i * 300);
+      lightsInterval = setInterval(createLight, 800);
+    }
+
+    function stopLights() {
+      if (lightsInterval) { clearInterval(lightsInterval); lightsInterval = null; }
+    }
+
+  // ensure audio graph exists (created lazily) so toggle mutations can safely reference it
+  createAudioGraph();
+
+  // lights are started when startEverything is invoked by default (we're inside that function)
+  startLights();
+
+    // small pop sound used for the pop-in animation
+    const popSound = new Audio('pop.mp3');
+    popSound.preload = 'auto';
+    popSound.volume = 0.9;
+
+    function createAudioGraph() {
+      if (audioCreated) return;
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audio = new Audio('portal.mp3');
+        audio.loop = true;
+        const source = audioContext.createMediaElementSource(audio);
+        lowShelf = audioContext.createBiquadFilter();
+        highShelf = audioContext.createBiquadFilter();
+        gainNode = audioContext.createGain();
+
+        lowShelf.type = 'lowshelf';
+        lowShelf.frequency.value = 200;
+        lowShelf.gain.value = 16;
+
+        highShelf.type = 'highshelf';
+        highShelf.frequency.value = 2000;
+        highShelf.gain.value = -32;
+
+        gainNode.gain.value = 0.08;
+
+        source.connect(lowShelf);
+        lowShelf.connect(highShelf);
+        highShelf.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        document.addEventListener('click', resumeAndPlayAudio, { once: true });
+        document.addEventListener('touchstart', resumeAndPlayAudio, { once: true });
+        document.addEventListener('keydown', resumeAndPlayAudio, { once: true });
+
+        audioCreated = true;
+      } catch (e) {
+        console.log('Audio init failed:', e);
       }
+    }
+
+    function resumeAndPlayAudio() {
+      if (!audioContext || !audio) return;
+      audioContext.resume();
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    }
+
+    // debug helper to force audio on (useful if autoplay blocked)
+    window.forcePlayAudio = () => {
+      createAudioGraph();
+      resumeAndPlayAudio();
+      console.log('forcePlayAudio called');
     };
-    
-    document.addEventListener('click', startAudio, { once: true });
-    document.addEventListener('touchstart', startAudio, { once: true });
-    document.addEventListener('keydown', startAudio, { once: true });
+
+      // dynamically import scripts.js (which wires the toggle and interactions)
+      // This prevents heavy scripts from loading on mobile unless the user opts in
+      import('./scripts.js?v=2').catch(e => console.log('Failed to load interactions:', e));
     
     // Listen for toggle state changes
     const toggle = document.querySelector('.liquid-toggle');
@@ -289,29 +374,43 @@
         mutations.forEach((mutation) => {
           if (mutation.attributeName === 'aria-pressed') {
             const isPressed = toggle.getAttribute('aria-pressed') === 'true';
-            const currentTime = audioContext.currentTime;
-            
-            // Cancel any scheduled changes
-            lowShelf.gain.cancelScheduledValues(currentTime);
-            highShelf.gain.cancelScheduledValues(currentTime);
-            gainNode.gain.cancelScheduledValues(currentTime);
-            
-            // Set current values
-            lowShelf.gain.setValueAtTime(lowShelf.gain.value, currentTime);
-            highShelf.gain.setValueAtTime(highShelf.gain.value, currentTime);
-            gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
-            
-            if (isPressed) {
-              // Transition to normal audio over 2 seconds
-              lowShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
-              highShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
-              gainNode.gain.linearRampToValueAtTime(1, currentTime + 2);
-            } else {
-              // Transition back to muffled over 2 seconds
-              lowShelf.gain.linearRampToValueAtTime(12, currentTime + 2);
-              highShelf.gain.linearRampToValueAtTime(-18, currentTime + 2);
-              gainNode.gain.linearRampToValueAtTime(0.4, currentTime + 2);
+
+            // ensure audio graph exists (it should after startEverything, but double-check)
+            if (!audioContext) createAudioGraph();
+            if (!audioContext || !lowShelf || !highShelf || !gainNode) {
+              // still not available, skip audio adjustments but run visual flash
+              triggerWhiteFlash(isPressed);
+              return;
             }
+
+            const currentTime = audioContext.currentTime;
+
+            // Cancel any scheduled changes
+            try {
+              lowShelf.gain.cancelScheduledValues(currentTime);
+              highShelf.gain.cancelScheduledValues(currentTime);
+              gainNode.gain.cancelScheduledValues(currentTime);
+
+              // Set current values
+              lowShelf.gain.setValueAtTime(lowShelf.gain.value, currentTime);
+              highShelf.gain.setValueAtTime(highShelf.gain.value, currentTime);
+              gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
+
+              if (isPressed) {
+                // Transition to normal audio over 2 seconds
+                lowShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
+                highShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
+                gainNode.gain.linearRampToValueAtTime(1, currentTime + 2);
+              } else {
+                // Transition back to muffled over 2 seconds
+                lowShelf.gain.linearRampToValueAtTime(12, currentTime + 2);
+                highShelf.gain.linearRampToValueAtTime(-18, currentTime + 2);
+                gainNode.gain.linearRampToValueAtTime(0.4, currentTime + 2);
+              }
+            } catch (e) {
+              console.log('Audio scheduling error:', e);
+            }
+
             // create a bright flash that expands from the toggle
             triggerWhiteFlash(isPressed);
           }
@@ -407,9 +506,6 @@
 
       // expose function for manual testing
       window.triggerWhiteFlash = (activate = true) => triggerWhiteFlash(activate);
-
-  // Load interaction module and any other modules that should run after initialization
-  import('./scripts.js?v=2').catch(e => console.log('Failed to load interactions:', e));
 
       // Play watery jello "pop-in" animation on page start.
       // Schedule it after load (or immediately if already loaded) so CSS and fonts have been applied.
@@ -510,79 +606,12 @@
           inner.animate(ripple, { duration, easing, fill: 'forwards' });
         }
       };
-      }
-      
     }
 
-    // Detect mobile devices and show a scoped Win7-styled overlay if mobile
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    } // end startEverything
 
-    function showMobileBlockScreenScoped() {
-      // ensure scoped stylesheet is loaded (safe to add globally because it's scoped under .win7)
-      const scopedHref = 'https://unpkg.com/7.css/dist/7.scoped.css';
-      if (![...document.styleSheets].some(s => s.href && s.href.includes('7.css/dist/7.scoped.css'))) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = scopedHref;
-        link.crossOrigin = 'anonymous';
-        link.onload = () => console.log('7.scoped.css loaded');
-        link.onerror = () => console.log('Failed to load 7.scoped.css');
-        document.head.appendChild(link);
-      }
-
-      // create overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'mobile-block-overlay';
-      overlay.style.position = 'fixed';
-      overlay.style.inset = '0';
-      overlay.style.zIndex = '2147483646';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.padding = '20px';
-      overlay.style.background = 'rgba(0,0,0,0.4)';
-
-      // content using .win7 wrapper per 7.css docs
-      const content = document.createElement('div');
-      content.className = 'win7';
-      content.innerHTML = `
-        <div class="window active" style="width: min(560px, 95%);">
-          <div class="title-bar">
-            <div class="title-bar-text">Best viewed on PC</div>
-            <div class="title-bar-controls">
-              <button aria-label="Close" class="is-close" id="mb-close-top" aria-hidden="true" tabindex="-1"></button>
-            </div>
-          </div>
-          <div class="window-body has-space">
-            <div style="display:flex; gap:1rem; align-items:center;">
-              <img src="pcIcon.png" alt="PC recommended" style="width:64px;height:64px;object-fit:contain;" />
-              <div>
-                <p style="margin:0">This site has audio and advanced animations that work best on a PC. For the full experience, please open the site on a desktop or laptop.</p>
-              </div>
-            </div>
-            <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:1rem;">
-              <button id="mb-run" class="default">Run anyway</button>
-            </div>
-          </div>
-        </div>
-      `;
-
-      overlay.appendChild(content);
-      document.body.appendChild(overlay);
-
-      const runBtn = overlay.querySelector('#mb-run');
-      // intentionally DO NOT bind any action to the red X (mb-close-top) — keep it visual only
-      runBtn.addEventListener('click', () => {
-        overlay.remove();
-        startEverything();
-      });
-
-      // ensure text and titles are readable (override any dark/white colors)
-      const textElems = overlay.querySelectorAll('h2, p, .title-bar-text');
-      textElems.forEach(el => (el.style.color = '#111'));
-    }
-
-    if (isMobileDevice) showMobileBlockScreenScoped(); else startEverything();
+    // automatically start if not blocked by mobile policy
+  if (!isMobileDevice) startEverything();
   </script>
 </body>
 </html>
