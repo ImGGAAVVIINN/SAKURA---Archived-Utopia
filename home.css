@@ -9,17 +9,119 @@
     font-family: 'Frutiger', sans-serif;
 }
 
+/* Background video styles for theKey.mp4 — positioned fixed so it covers the
+   viewport and is allowed to "bleed" slightly into the intro/outro sections */
+.bg-key-wrap {
+    /* Scoped to the sticky section: absolutely positioned within
+       .sticky-cols-wrapper so it doesn't cover the whole page. */
+    position: absolute;
+    top: -12vh; /* increase bleed so a little bit shows into intro/outro */
+    /* extend horizontally past the sticky section padding so the video
+       fills the full width without visible gaps */
+    left: -0.5rem;
+    right: -0.5rem;
+    bottom: -12vh;
+    z-index: 0;
+    pointer-events: none;
+    overflow: visible; /* allow the visible bleed to escape its box */
+}
+.bg-key {
+    --bleed-fade: 8vh; /* how much of the top/bottom edge should fade; match intro fade */
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    object-fit: cover;
+    display: block;
+    transform: translateZ(0);
+    /* No darkening; use the raw video as requested */
+    opacity: 1;
+    /* Fade the video out near the top and bottom so it bleeds softly into
+       the intro/outro sections. Use mask-image with a gradient and include
+       -webkit- prefix for Safari support. */
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,1) var(--bleed-fade), rgba(0,0,0,1) calc(100% - var(--bleed-fade)), rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,1) var(--bleed-fade), rgba(0,0,0,1) calc(100% - var(--bleed-fade)), rgba(0,0,0,0) 100%);
+    -webkit-mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-size: 100% 100%;
+    mask-repeat: no-repeat;
+}
+
+/* Fallback style when the video resource is missing/unavailable */
+
+/* Fallback when resource missing — scoped to the sticky section */
+.sticky-cols.bg-key-missing .bg-key-wrap {
+    background: linear-gradient(180deg,#0b1220,#1a2433);
+}
+
+/* Ensure sticky section content sits above the video */
+.sticky-cols .col {
+    z-index: 3; /* keep columns above the bg video and intro */
+}
+.sticky-cols .col-content,
+.sticky-cols .col-img {
+    z-index: 2;
+    position: relative; /* ensure z-index creates stacking context for inner elements */
+}
+
+/* Allow sticky section to show the video bleed outside its own bounds */
+.sticky-cols {
+    overflow: visible;
+}
+
+/* Intro background: use tmp.png and blend it with the video that bleeds up
+   from the sticky section. The intro image fades at its bottom edge so the
+   video's fade beneath it blends smoothly. */
+.intro {
+    position: relative;
+    z-index: 2; /* sit above the video but below sticky columns */
+    overflow: visible;
+}
+.intro::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* correct path to the asset in images/ */
+    background: center / cover no-repeat url('images/tmp.png');
+    mix-blend-mode: overlay; /* blend with the video beneath */
+    opacity: 0.98;
+    pointer-events: none;
+    z-index: 0;
+    /* fade out at bottom so the video bleed shows through smoothly */
+    --intro-fade: 8vh;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0, rgba(0,0,0,1) calc(100% - var(--intro-fade)), rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0, rgba(0,0,0,1) calc(100% - var(--intro-fade)), rgba(0,0,0,0) 100%);
+}
+
+/* ensure intro content sits above its background pseudo-element */
+.intro > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Avoid autoplay heavy video on small screens — hide video under a small viewport */
+@media (max-width: 700px) {
+    .bg-key-wrap { display: none; }
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* prevent horizontal scrolling caused by elements sized with 100vw or
+   absolute children pushed outside the viewport */
+html, body {
+    overflow-x: hidden;
+}
+
 section {
     position: relative;
-    width: 100vw;
+    /* avoid 100vw which can exceed the viewport when a vertical scrollbar
+       is present; use 100% to match the parent's width */
+    width: 100%;
     height: 100svh;
-    background-color: ;
     color: blue;
     overflow: hidden;
 }
@@ -71,7 +173,7 @@ img {
     will-change: transform;
 }
 
-.col h1 {
+.col h2 {
     color: cyan;
     width: 60%;
 }
@@ -108,6 +210,15 @@ img {
     background-color: yellow;
     border-radius: 3rem;
     overflow: hidden;
+}
+
+/* When the background video is present (scoped to .sticky-cols), make the
+   "cards" slightly translucent so the video can be seen through them. */
+.sticky-cols.has-bg-key .col-content-wrapper {
+    background-color: yellow; /* keep original solid card look (user requested no transparency) */
+}
+.sticky-cols.has-bg-key .col-img-wrapper {
+    background-color: inherit; /* restore default */
 }
 
 .col-content-wrapper {

@@ -69,6 +69,12 @@
       .liquid-toggle.pre-pop { opacity: 1; transform: none; filter: none; pointer-events: auto; }
     }
   </style>
+  <script>
+    // Set manual scroll restoration early to avoid the browser restoring scroll position
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+    try { window.scrollTo(0, 0) } catch (e) {}
+    window.addEventListener('pageshow', (e) => { if (e.persisted) try { window.scrollTo(0,0) } catch (e) {} })
+  </script>
   <noscript>
     <style>
       /* If JS is disabled, ensure the toggle is visible */
@@ -196,17 +202,21 @@
       
   <script>
     // Check if user has visited before using cookies
-    if (document.cookie.includes("visited=true")) {
-      console.log("User has visited the site before.");
-    } else {
+    const isFirstVisit = !document.cookie.includes("visited=true");
+    if (isFirstVisit) {
       console.log("First visit to the site.");
       document.cookie = "visited=true; max-age=31536000; path=/"; // Expires in 1 year
+    } else {
+      console.log("User has visited the site before.");
     }
 
     
 
-    // main initialization — wrapped so we can delay it on mobile
-    function startEverything() {
+  // global flag to mute initial audio if user chose so on first run
+  window.initiallyMuted = false;
+
+  // main initialization — wrapped so we can delay it on mobile
+  function startEverything() {
       const colors = ['blue', 'green', 'pink'];
       const container = document.getElementById('lightsContainer');
       
@@ -243,6 +253,33 @@
   const popSound = new Audio('sounds/pop.mp3');
   popSound.preload = 'auto';
   popSound.volume = 0.9;
+  // helper to play pop sound but avoid duplicates when triggered multiple times quickly
+  let _lastPopSoundTime = 0;
+  function playPopSoundOnce() {
+    const now = performance.now();
+    const delta = now - _lastPopSoundTime;
+    // shorter debounce so legitimate sequential triggers still play
+    if (delta < 300) {
+      console.log('playPopSoundOnce: debounced (delta=' + Math.round(delta) + 'ms)');
+      return;
+    }
+    _lastPopSoundTime = now;
+    if (window.initiallyMuted) { console.log('playPopSoundOnce: initiallyMuted, skipping'); return; }
+    if (!popSound) { console.log('playPopSoundOnce: no popSound available'); return; }
+    try {
+      popSound.currentTime = 0;
+      const p = popSound.play();
+      if (p && p.catch) {
+        p.catch(e => console.log('Pop sound play prevented:', e));
+      }
+      console.log('playPopSoundOnce: play attempted');
+    } catch (e) {
+      console.log('Pop sound error:', e);
+    }
+  }
+
+  // helper for manual testing
+  window.forcePopSound = () => { playPopSoundOnce(); console.log('forcePopSound called'); };
     
     const source = audioContext.createMediaElementSource(audio);
     const lowShelf = audioContext.createBiquadFilter();
@@ -259,8 +296,8 @@
     highShelf.frequency.value = 2000;
     highShelf.gain.value = -32; // Cut highs for muffled sound
     
-    // Reduce overall volume for "another room" effect
-    gainNode.gain.value = 0.08;
+  // Reduce overall volume for "another room" effect (respect initial mute choice)
+  gainNode.gain.value = window.initiallyMuted ? 0 : 0.4;
     
     // Connect the audio graph
     source.connect(lowShelf);
@@ -268,12 +305,12 @@
     highShelf.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    // Start audio on first user interaction
+    // Start audio on first user interaction (respect initial mute choice)
     let audioStarted = false;
     const startAudio = () => {
       if (!audioStarted) {
         audioContext.resume();
-        audio.play().catch(e => console.log('Audio play failed:', e));
+        if (!window.initiallyMuted) audio.play().catch(e => console.log('Audio play failed:', e));
         audioStarted = true;
       }
     };
@@ -326,6 +363,13 @@
         // respect reduced motion — if reduced, just set page to white immediately
         const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const body = document.body;
+        let redirected = false;
+        const redirectAfterFade = () => {
+          if (redirected) return;
+          redirected = true;
+          // let the white screen sit briefly so it feels intentional
+          setTimeout(() => { window.location.href = 'home.html'; }, 220);
+        };
 
         if (!activate) {
           // If turning off, remove flashed state
@@ -337,8 +381,11 @@
 
         if (reduced) {
           body.classList.add('is-flashed');
+          redirectAfterFade();
           return;
         }
+
+        // Sound warning dialog shown on first visit
 
         // compute center of toggle
         const rect = toggle.getBoundingClientRect();
@@ -366,8 +413,8 @@
         overlay.style.clipPath = `circle(0px at ${cx}px ${cy}px)`;
         overlay.style.transition = 'clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear';
 
-        // append to body for consistent stacking
-        document.body.appendChild(overlay);
+  // append to body for consistent stacking
+  document.body.appendChild(overlay);
 
         // debug: log overlay presence and computed style
         console.log('overlay appended:', !!overlay, overlay.getBoundingClientRect());
@@ -385,7 +432,7 @@
             // short timeout to ensure visuals update
             setTimeout(() => {
               body.classList.add('is-flashed');
-              overlay.remove();
+              redirectAfterFade();
             }, 50);
             return;
           }
@@ -396,20 +443,53 @@
         let done = false;
         overlay.addEventListener('transitionend', (ev) => {
           if (done) return;
-          // we only care about clip-path transition end
-          if (ev && ev.propertyName && ev.propertyName !== 'clip-path') return;
+          // accept any transitionend on the overlay; clip-path support varies
           done = true;
-          // once expanded, keep page white and remove overlay
           body.classList.add('is-flashed');
-          overlay.remove();
+          // leave overlay in place so white stays visible until navigation
+          redirectAfterFade();
         }, { once: true });
+
+        // Non-event fallback: if transitionend never fires, mark flashed after expected duration and redirect
+        const expected = 520; // matches clip-path transition duration
+        setTimeout(() => {
+          if (done) return;
+          done = true;
+          body.classList.add('is-flashed');
+          redirectAfterFade();
+        }, expected + 120);
       }
 
       // expose function for manual testing
       window.triggerWhiteFlash = (activate = true) => triggerWhiteFlash(activate);
 
-  // Load interaction module and any other modules that should run after initialization
+    // Load interaction module and any other modules that should run after initialization
   import('./scripts.js?v=2').catch(e => console.log('Failed to load interactions:', e));
+
+    // Try to autoplay background audio (best-effort). If browser blocks autoplay this will be caught
+    // and audio will still start on first user interaction via startAudio(). We apply a short gain ramp
+    // so the music fades in instead of popping loud.
+    if (!window.initiallyMuted) {
+      (async () => {
+        try {
+          await audioContext.resume();
+          await audio.play();
+          audioStarted = true;
+          const now = audioContext.currentTime;
+          // start from 0 then ramp to the target level over 2 seconds for a smooth entrance
+          try {
+            gainNode.gain.cancelScheduledValues(now);
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.08, now + 2);
+          } catch (e) {
+            console.log('Gain scheduling failed:', e);
+          }
+          console.log('Background audio autoplayed');
+        } catch (err) {
+          console.log('Background audio autoplay blocked or failed:', err);
+        }
+      })();
+    }
 
       // Play watery jello "pop-in" animation on page start.
       // Schedule it after load (or immediately if already loaded) so CSS and fonts have been applied.
@@ -423,18 +503,58 @@
         setTimeout(() => {
           // prefer the robust trigger that falls back to WAAPI when needed
           toggle.classList.remove('pre-pop');
-          if (window.triggerJello) window.triggerJello();
-          else {
-            toggle.classList.remove('pop-in'); void toggle.offsetWidth; toggle.classList.add('pop-in');
-          }
+            if (window.triggerJello) {
+              window.triggerJello();
+            } else {
+              toggle.classList.remove('pop-in'); void toggle.offsetWidth; toggle.classList.add('pop-in');
+            }
+            // mark that we triggered the initial pop so defensive checks don't duplicate it
+            toggle.dataset.jelloTriggered = 'true';
+            setTimeout(() => toggle.removeAttribute('data-jello-triggered'), 2500);
         }, 200);
       };
 
       if (document.readyState === 'complete') schedulePopIn();
       else window.addEventListener('load', schedulePopIn, { once: true });
 
+      // Ensure the toggle isn't left in a broken pre-pop state.
+      // Sometimes when first-run dialogs/videos run, the initial reveal can get skipped —
+      // we defensively reset and retrigger the pop-in a short time after initialization.
+      function ensureToggleHealthy() {
+        const el = document.querySelector('.liquid-toggle');
+        if (!el) return;
+        // don't re-trigger if we already ran the initial jello on load
+        if (el.dataset.jelloTriggered === 'true') return;
+        // Make sure it's visible and interactive
+        el.classList.remove('pre-pop');
+        el.style.opacity = '';
+        el.style.transform = '';
+        // Ensure aria attribute exists
+        if (!el.hasAttribute('aria-pressed')) el.setAttribute('aria-pressed', 'false');
+
+        // Try to trigger the pop-in robustly
+        if (window.triggerJello) {
+          try { window.triggerJello(); } catch (e) { /* ignore */ }
+        } else {
+          el.classList.remove('pop-in'); void el.offsetWidth; el.classList.add('pop-in');
+        }
+
+        // Remove lingering animation class after a safe timeout
+        setTimeout(() => {
+          el.classList.remove('pop-in');
+        }, 1600);
+      }
+
+      // Run defensive check shortly after everything initializes and also expose for debugging
+      setTimeout(ensureToggleHealthy, 600);
+      window.ensureToggleHealthy = ensureToggleHealthy;
+
   // ensure pre-pop is cleared if any animation starts
-  toggle.addEventListener('animationstart', () => toggle.classList.remove('pre-pop'));
+  toggle.addEventListener('animationstart', () => {
+    toggle.classList.remove('pre-pop');
+    // ensure pop sound plays once when CSS animation starts
+    playPopSoundOnce();
+  });
 
       // remove the class after the animation finishes to keep DOM clean
       toggle.addEventListener('animationend', (e) => {
@@ -460,13 +580,8 @@
         void el.offsetWidth; // force reflow
         el.classList.add('pop-in');
 
-        // play pop sound when animation starts (best-effort, may be blocked until user interacts)
-        try {
-          popSound.currentTime = 0;
-          popSound.play().catch(e => console.log('Pop sound play prevented:', e));
-        } catch (e) {
-          console.log('Pop sound error:', e);
-        }
+        // play pop sound (debounced) when animation starts
+        playPopSoundOnce();
 
         const cssAnim = getComputedStyle(el).animationName;
         if (cssAnim && cssAnim !== 'none') {
@@ -490,13 +605,8 @@
 
         el.animate(jelloFrames, { duration, easing, fill: 'forwards' });
 
-        // play pop sound for WAAPI fallback as well
-        try {
-          popSound.currentTime = 0;
-          popSound.play().catch(e => console.log('Pop sound play prevented:', e));
-        } catch (e) {
-          console.log('Pop sound error:', e);
-        }
+        // play pop sound (debounced) for WAAPI fallback as well
+        playPopSoundOnce();
 
         const inner = el.querySelector('.liquid__track');
         if (inner) {
@@ -530,17 +640,35 @@
         document.head.appendChild(link);
       }
 
-      // create overlay
-      const overlay = document.createElement('div');
-      overlay.className = 'mobile-block-overlay';
-      overlay.style.position = 'fixed';
-      overlay.style.inset = '0';
-      overlay.style.zIndex = '2147483646';
-  overlay.style.display = 'flex';
-  overlay.style.alignItems = 'center';
-  overlay.style.justifyContent = 'center';
-  overlay.style.padding = '20px';
-      overlay.style.background = 'rgba(0,0,0,0.4)';
+    // create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'mobile-block-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = '2147483646';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '20px';
+    overlay.style.background = 'transparent';
+
+    // background video for mobile block screen (muted so autoplay is allowed on most browsers)
+    const mbBg = document.createElement('video');
+    mbBg.src = 'videos/bg.mp4';
+    mbBg.muted = true;
+    mbBg.autoplay = true;
+    mbBg.loop = true;
+    mbBg.playsInline = true;
+    mbBg.preload = 'auto';
+    mbBg.style.position = 'absolute';
+    mbBg.style.inset = '0';
+    mbBg.style.width = '100%';
+    mbBg.style.height = '100%';
+    mbBg.style.objectFit = 'cover';
+    mbBg.style.zIndex = '2147483646';
+    mbBg.style.filter = 'brightness(.45)';
+    // attempt to play immediately; muted should allow autoplay on mobile
+    mbBg.play().catch(e => console.log('mobile bg.mp4 autoplay failed:', e));
 
       // content using .win7 wrapper per 7.css docs
       const content = document.createElement('div');
@@ -550,12 +678,12 @@
           <div class="title-bar">
             <div class="title-bar-text">Best viewed on PC</div>
             <div class="title-bar-controls">
-              <button aria-label="Close" class="is-close" id="mb-close-top" aria-hidden="true" tabindex="-1"></button>
+              <button aria-label="Close" class="is-close" id="mb-close-top"></button>
             </div>
           </div>
           <div class="window-body has-space">
             <div style="display:flex; gap:1rem; align-items:center;">
-              <img src="pcIcon.png" alt="PC recommended" style="width:64px;height:64px;object-fit:contain;" />
+              <img src="/images/icons/pcIcon.png" alt="PC recommended" style="width:64px;height:64px;object-fit:contain;" />
               <div>
                 <p style="margin:0">This site has audio and advanced animations that work best on a PC. For the full experience, please open the site on a desktop or laptop.</p>
               </div>
@@ -567,22 +695,204 @@
         </div>
       `;
 
-      overlay.appendChild(content);
+  // append background video then content so dialog sits above
+  overlay.appendChild(mbBg);
+  content.style.zIndex = '2147483647';
+  overlay.appendChild(content);
       document.body.appendChild(overlay);
 
       const runBtn = overlay.querySelector('#mb-run');
-      // intentionally DO NOT bind any action to the red X (mb-close-top) — keep it visual only
+      // run button behavior
       runBtn.addEventListener('click', () => {
+        // stop background video if present
+        try { const v = overlay.querySelector('video'); if (v) { v.pause(); v.src = ''; } } catch (e) {}
         overlay.remove();
         startEverything();
       });
+
+      // make the red X behave the same as Run anyway
+      const closeTop = overlay.querySelector('#mb-close-top');
+      if (closeTop) {
+        closeTop.addEventListener('click', () => {
+          try { const v = overlay.querySelector('video'); if (v) { v.pause(); v.src = ''; } } catch (e) {}
+          overlay.remove();
+          startEverything();
+        });
+      }
 
       // ensure text and titles are readable (override any dark/white colors)
       const textElems = overlay.querySelectorAll('h2, p, .title-bar-text');
       textElems.forEach(el => (el.style.color = '#111'));
     }
 
-    if (isMobileDevice) showMobileBlockScreenScoped(); else startEverything();
+    // If first visit, show the sound warning first, then continue
+    function continueApp() {
+      if (isMobileDevice) showMobileBlockScreenScoped(); else startEverything();
+    }
+
+    if (isFirstVisit) {
+      showSoundWarning(continueApp);
+    } else {
+      continueApp();
+    }
+
+    // Sound warning dialog shown on first visit (top-level)
+    function showSoundWarning(onDone) {
+      // ensure 7.css scoped stylesheet is loaded so the dialog uses Win7 styles
+      const scopedHref = 'https://unpkg.com/7.css/dist/7.scoped.css';
+      const hasScoped = [...document.styleSheets].some(s => s.href && s.href.includes('7.css/dist/7.scoped.css'));
+
+  const createOverlay = () => {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.zIndex = '2147483650';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.background = 'transparent';
+
+  // background video (muted) for the warning screen — plays silently and loops
+  const bgVideo = document.createElement('video');
+  bgVideo.src = 'videos/bg.mp4';
+  bgVideo.autoplay = true;
+  bgVideo.muted = true; // muted so browsers allow autoplay
+  bgVideo.loop = true;
+  bgVideo.playsInline = true;
+  bgVideo.preload = 'auto';
+  bgVideo.style.position = 'absolute';
+  bgVideo.style.inset = '0';
+  bgVideo.style.width = '100%';
+  bgVideo.style.height = '100%';
+  bgVideo.style.objectFit = 'cover';
+  bgVideo.style.zIndex = '2147483650';
+  bgVideo.style.opacity = '1';
+  // darken the video so dialog text remains readable
+  bgVideo.style.filter = 'brightness(.46)';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'win7';
+  wrapper.style.maxWidth = '560px';
+  wrapper.style.width = 'min(95%, 560px)';
+  wrapper.style.zIndex = '2147483651';
+        wrapper.innerHTML = `
+          <div class="window active">
+            <div class="title-bar">
+              <div class="title-bar-text">Audio notice</div>
+            </div>
+            <div class="window-body has-space">
+              <div style="display:flex; gap:1rem; align-items:center;">
+                <img src="/images/icons/music.webp" alt="Audio" style="width:96px;height:96px;object-fit:contain;" />
+                <div>
+                  <p style="margin:0; color:#111;">This website plays audio. Please lower your volume if its on max, or unmute your device if its muted, before continuing.</p>
+                </div>
+              </div>
+              <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:1rem;">
+                <button id="sound-ok" class="default">Got it</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+  // append video behind the dialog
+  overlay.appendChild(bgVideo);
+  overlay.appendChild(wrapper);
+  // try to play (best-effort), log failures
+  bgVideo.play().catch(e => console.log('bg.mp4 autoplay blocked or failed:', e));
+        document.body.appendChild(overlay);
+
+        const ok = overlay.querySelector('#sound-ok');
+
+        if (ok) {
+          ok.addEventListener('click', async () => {
+            // remove the audio notice overlay
+            overlay.remove();
+
+            // play intro video fully (user-initiated click — should be allowed to play)
+            const vOverlay = document.createElement('div');
+            vOverlay.style.position = 'fixed';
+            vOverlay.style.inset = '0';
+            vOverlay.style.zIndex = '2147483660';
+            vOverlay.style.display = 'flex';
+            vOverlay.style.alignItems = 'center';
+            vOverlay.style.justifyContent = 'center';
+            vOverlay.style.background = '#000';
+
+            const video = document.createElement('video');
+            video.src = 'videos/weWereLiedTo.mp4';
+            video.autoplay = false; // we'll call play() explicitly
+            video.playsInline = true;
+            video.controls = false;
+            video.preload = 'auto';
+            video.style.maxWidth = '100%';
+            video.style.maxHeight = '100%';
+            video.style.width = '100%';
+            video.style.height = '100%';
+
+            vOverlay.appendChild(video);
+            // initial background is black; we'll fade it to white near the end of the video
+            vOverlay.style.background = '#000';
+            vOverlay.style.transition = '';
+            document.body.appendChild(vOverlay);
+
+            try {
+              await video.play();
+            } catch (err) {
+              console.log('Intro video play failed or was blocked:', err);
+              // fall back to continuing the app
+              vOverlay.remove();
+              if (onDone) onDone();
+              return;
+            }
+
+            // fade overlay background to white between 0:47 and 0:49
+            let fadeStarted = false;
+            const fadeStart = 46.67;
+            const fadeDuration = 2; // seconds
+            const onTime = () => {
+              const t = video.currentTime;
+              if (!fadeStarted && t >= fadeStart) {
+                fadeStarted = true;
+                // trigger a smooth background transition to white that finishes at fadeStart + fadeDuration
+                vOverlay.style.transition = `background ${fadeDuration}s linear`;
+                vOverlay.style.background = '#fff';
+              }
+            };
+            video.addEventListener('timeupdate', onTime);
+
+            // when video ends, remove overlay and continue
+            video.addEventListener('ended', () => {
+              video.removeEventListener('timeupdate', onTime);
+              vOverlay.remove();
+              if (onDone) onDone();
+            }, { once: true });
+          });
+
+          // keyboard accessibility: Enter/Space should also activate
+          ok.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              ok.click();
+            }
+          });
+        }
+      };
+
+      if (hasScoped) {
+        createOverlay();
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = scopedHref;
+        link.crossOrigin = 'anonymous';
+        let called = false;
+        link.onload = () => { if (!called) { called = true; createOverlay(); console.log('7.scoped.css loaded for sound dialog'); } };
+        link.onerror = () => { if (!called) { called = true; console.log('Failed to load 7.scoped.css for sound dialog — falling back'); createOverlay(); } };
+        // fallback: ensure overlay shows even if stylesheet is slow
+        setTimeout(() => { if (!called) { called = true; console.log('7.scoped.css load timeout — showing dialog'); createOverlay(); } }, 800);
+        document.head.appendChild(link);
+      }
+    }
   </script>
 </body>
 </html>

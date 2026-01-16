@@ -12,6 +12,13 @@
     <script src="https://assets.codepen.io/16327/SplitText3.min.js"></script>
     <!-- Lenis -->
     <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.35/dist/lenis.min.js"></script>
+        <script>
+            // Set manual scroll restoration early so the browser doesn't restore scroll on reload
+            if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+            // Quick defensive scroll to top as early as possible
+            try { window.scrollTo(0,0) } catch (e) {}
+            window.addEventListener('pageshow', (e) => { if (e.persisted) try { window.scrollTo(0,0) } catch (e) {} })
+        </script>
 </head>
 <body>
   <main>
@@ -21,7 +28,12 @@
     </section>
 
     <section class="sticky-cols">
-        <div class="sticky-cols-weapper">
+        <div class="sticky-cols-wrapper">
+            <!-- Background video placed here so it sits behind the sticky cards
+                 and only bleeds a bit into the intro/outro sections. -->
+            <div class="bg-key-wrap" aria-hidden="true">
+                <video class="bg-key" src="videos/theKey.mp4" muted autoplay loop playsinline preload="auto"></video>
+            </div>
             <div class="col col-1">
                 <div class="col-content">
                     <div class="col-content-wrapper">
@@ -38,7 +50,7 @@
                 </div>
                 <div class="col-img col-img-2">
                     <div class="col-img-wrapper">
-                        <img src="https://preview.redd.it/robux-roblox-cheap-v0-9ro0c7uxn87g1.jpeg?width=640&crop=smart&auto=webp&s=0f4956a65f0394ae575eb4963717e7af1938bdcd" alt="">
+                        <img src="https://preview.redd.it/stalin-watching-nikita-khrushchev-denouncing-his-cult-of-v0-pydvh3wr2bdg1.png?width=1080&crop=smart&auto=webp&s=4b544fe920286bc02531bdac8d7ab0b47dd6c2ec" alt="">
                     </div>
                 </div>
             </div>
@@ -67,7 +79,6 @@
         <p>We hope you found what you were looking for.</p>
     </section>
 </main>
+    <script src="home.js"></script>
 </body>
-</body>
-<script src="home.js"></script>
 </html>

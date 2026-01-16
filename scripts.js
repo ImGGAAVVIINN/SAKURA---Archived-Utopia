@@ -217,3 +217,24 @@ toggle.addEventListener('keyup', (e) => {
     toggleState()
   }
 })
+
+// Ensure the page always returns to the top after a refresh/navigation
+// Prevent the browser from restoring scroll position and force scroll to (0,0)
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual'
+}
+
+window.addEventListener('beforeunload', () => {
+  // scroll to top before unloading so a reload starts at the top
+  window.scrollTo(0, 0)
+})
+
+window.addEventListener('pageshow', (e) => {
+  // when coming back from the back/forward cache, ensure we're at the top
+  if (e.persisted) window.scrollTo(0, 0)
+})
+
+window.addEventListener('load', () => {
+  // final safeguard once everything has loaded
+  window.scrollTo(0, 0)
+})

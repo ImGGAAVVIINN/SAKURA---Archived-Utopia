@@ -8,6 +8,7 @@
   <!-- Windows 7 styles for buttons from 7.css -->
   <link rel="stylesheet" href="https://khang-nd.github.io/7.css/7.css" />
   <style>
+    /* script intentionally removed from here and placed after the style block so CSS remains valid */
     @font-face {
       font-family: 'Frutiger';
       src: url('fonts/frutiger/Frutiger.ttf') format('truetype');
@@ -66,6 +67,12 @@
       .liquid-toggle.pre-pop { opacity: 1; transform: none; filter: none; pointer-events: auto; }
     }
   </style>
+  <script>
+    // Prevent automatic scroll restoration
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+    try { window.scrollTo(0, 0) } catch (e) {}
+    window.addEventListener('pageshow', (e) => { if (e.persisted) try { window.scrollTo(0,0) } catch (e) {} })
+  </script>
   <noscript>
     <style>
       /* If JS is disabled, ensure the toggle is visible */
