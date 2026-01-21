@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 gsap.to(".col-3", { y: "0%", duration: 0.75 }); //move in from the bottom
 
                 gsap.to(".col-img img", { scale: 1.25, duration: 0.75 });
-                gsap.to(".col-img-2", {
+                gsap.to(".col-img-0", {
                     clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
                     duration: 0.75,
                 });
@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentPhrase = 1;
 
                 gsap.to(".col-2", { opacity: 1, scale: 1, duration: 0.75 });
-                gsap.to(".col-3", { x: "100%", duration: 0.75 });
+                gsap.to(".col-3", { x: "100%", duration: 0.75, scale: 1.005 });
                 gsap.to(".col-4", { y: "100%", duration: 0.75 });
 
                 gsap.to(".col-3 .col-content-wrapper .line span", {
