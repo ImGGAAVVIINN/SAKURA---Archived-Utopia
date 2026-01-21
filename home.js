@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentPhrase = 2;
 
                 gsap.to(".col-2", { opacity: 0, scale: 0.75, duration: 0.75 }); //switch to phase 2 if we are still on 1
-                gsap.to(".col-3", { x: "0%", duration: 0.75 }); //move in from the bottom
+                gsap.to(".col-3", { x: "0%", duration: 0.75, scale: 0.98 }); //move in from the bottom
                 gsap.to(".col-4", { y: "0%", duration: 0.75 }); //move in from the left
 
                 gsap.to(".col-3 .col-content-wrapper .line span", {
