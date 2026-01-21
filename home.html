@@ -21,11 +21,18 @@
         </script>
 </head>
 <body>
-  <main>
-    <section class="intro">
-        <h1>Welcome to the Home Page</h1>
-        <p>This is the introductory section of the home page.</p>
-    </section>
+    <main>
+        <section class="intro">
+            <div class="intro-top-right" style="color: #F86BC7; position: absolute; top: 2rem; right: 0; width: 50%; height: 50%; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding: 2rem; box-sizing: border-box;">
+                <h1>Top Right Title</h1>
+                <p>This is the top right quadrant.</p>
+            </div>
+            <div class="intro-bottom-left" style="color: #0056D7; position: absolute; bottom: 3rem; left: 0; width: 50%; height: 50%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 2rem; box-sizing: border-box;">
+                <h1>Bottom Left Title</h1>
+                <p>This is the bottom left quadrant.</p>
+            </div>
+            <div style="position: relative; width: 100%; height: 300px;"></div>
+        </section>
 
     <section class="sticky-cols">
         <div class="sticky-cols-wrapper">
@@ -36,7 +43,10 @@
             </div>
             <div class="col col-1">
                 <div class="col-content">
-                    <div class="col-content-wrapper">
+                    <div class="col-content-wrapper liquid-glass">
+                        <div class="liquid-glass--bend"></div>
+                        <div class="liquid-glass--face"></div>
+                        <div class="liquid-glass--edge"></div>
                         <h2>Sticky Column 1</h2>
                         <p>This column stays in place while you scroll.</p>
                     </div>
@@ -55,11 +65,17 @@
                 </div>
             </div>
             <div class="col col-3">
-                <div class="col-content-wrapper">
+                <div class="col-content-wrapper liquid-glass">
+                    <div class="liquid-glass--bend"></div>
+                    <div class="liquid-glass--face"></div>
+                    <div class="liquid-glass--edge"></div>
                     <h2>Sticky Column 2</h2>
                     <p>This is another sticky column with content.</p>
                 </div>
-                <div class="col-content-wrapper-2">
+                <div class="col-content-wrapper-2 liquid-glass">
+                    <div class="liquid-glass--bend"></div>
+                    <div class="liquid-glass--face"></div>
+                    <div class="liquid-glass--edge"></div>
                     <h2>Sticky Column 3</h2>
                     <p>More content in the third sticky column.</p>
                 </div>
@@ -79,6 +95,15 @@
         <p>We hope you found what you were looking for.</p>
     </section>
 </main>
+
+    <!-- SVG Filter for Liquid Glass Effect -->
+    <svg style="display: none" xmlns="http://www.w3.org/2000/svg">
+        <filter id="glass-blur" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox">
+            <feTurbulence type="fractalNoise" baseFrequency="0.003 0.007" numOctaves="1" result="turbulence" />
+            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="200" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+    </svg>
+
     <script src="home.js"></script>
 </body>
 </html>

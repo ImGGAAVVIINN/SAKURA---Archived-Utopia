@@ -82,7 +82,7 @@
     position: absolute;
     inset: 0;
     /* correct path to the asset in images/ */
-    background: center / cover no-repeat url('images/tmp.png');
+    background: center / cover no-repeat url('images/screenshot.png');
     mix-blend-mode: overlay; /* blend with the video beneath */
     opacity: 0.98;
     pointer-events: none;
@@ -122,7 +122,6 @@ section {
        is present; use 100% to match the parent's width */
     width: 100%;
     height: 100svh;
-    color: blue;
     overflow: hidden;
 }
 
@@ -215,7 +214,7 @@ img {
 /* When the background video is present (scoped to .sticky-cols), make the
    "cards" slightly translucent so the video can be seen through them. */
 .sticky-cols.has-bg-key .col-content-wrapper {
-    background-color: yellow; /* keep original solid card look (user requested no transparency) */
+    background-color: transparent; /* allow liquid glass effect to show through */
 }
 .sticky-cols.has-bg-key .col-img-wrapper {
     background-color: inherit; /* restore default */
@@ -228,6 +227,46 @@ img {
     justify-content: space-between;
 }
 
+/* ===== Liquid Glass Effect ===== */
+.col-content-wrapper.liquid-glass,
+.col-content-wrapper-2.liquid-glass {
+    --border-radius: 3rem;
+    background-color: transparent !important;
+}
+
+.liquid-glass--bend {
+    backdrop-filter: blur(12px);
+    border-radius: var(--border-radius, 3rem);
+    filter: url(#glass-blur);
+    inset: 0;
+    position: absolute;
+    z-index: 0;
+}
+
+.liquid-glass--face {
+    border-radius: var(--border-radius, 3rem);
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.15), 0 0 12px rgba(0, 0, 0, 0.08);
+    background: rgba(255, 183, 197, 0.2);
+    inset: 0;
+    position: absolute;
+    z-index: 1;
+}
+
+.liquid-glass--edge {
+    border-radius: var(--border-radius, 3rem);
+    box-shadow: inset 3px 3px 3px 0 rgba(255, 255, 255, 0.45),
+        inset -3px -3px 3px 0 rgba(255, 255, 255, 0.45);
+    inset: 0;
+    position: absolute;
+    z-index: 2;
+}
+
+/* Ensure content inside liquid glass sits above the glass layers */
+.col-content-wrapper.liquid-glass > *:not(.liquid-glass--bend):not(.liquid-glass--face):not(.liquid-glass--edge) {
+    position: relative;
+    z-index: 3;
+}
+
 .col-content-wrapper-2 {
     position: absolute;
     top: 0;
@@ -238,6 +277,17 @@ img {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+}
+
+/* Liquid glass for col-content-wrapper-2 */
+.col-content-wrapper-2.liquid-glass {
+    --border-radius: 3rem;
+    background-color: transparent;
+}
+
+.col-content-wrapper-2.liquid-glass > *:not(.liquid-glass--bend):not(.liquid-glass--face):not(.liquid-glass--edge) {
+    position: relative;
+    z-index: 3;
 }
 
 .col-img-1, 
