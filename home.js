@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 currentPhrase = 1;
 
                 gsap.to(".col-2", { opacity: 1, scale: 1, duration: 0.75 });
-                gsap.to(".col-3", { x: "100%", duration: 0.75 });
+                gsap.to(".col-3", { x: "100%", duration: 0.75, scale: 1.005 });
                 gsap.to(".col-4", { y: "100%", duration: 0.75 });
 
                 gsap.to(".col-3 .col-content-wrapper .line span", {
