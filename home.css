@@ -69,6 +69,11 @@
     overflow: visible;
 }
 
+.sticky-cols.has-bg-key{
+    top: 1.7%;
+    max-height: 95.5vh;
+}
+
 /* Intro background: use tmp.png and blend it with the video that bleeds up
    from the sticky section. The intro image fades at its bottom edge so the
    video's fade beneath it blends smoothly. */
@@ -216,6 +221,7 @@ img {
 .sticky-cols.has-bg-key .col-content-wrapper {
     background-color: transparent; /* allow liquid glass effect to show through */
 }
+
 .sticky-cols.has-bg-key .col-img-wrapper {
     background-color: inherit; /* restore default */
 }

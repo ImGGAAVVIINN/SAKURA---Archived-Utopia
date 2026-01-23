@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Home Page</title>
   <link rel="stylesheet" href="home.css" />
+    <!-- Taskbar styles (from taskbar example) -->
+    <link rel="stylesheet" href="tmp/taskbarExample.css" />
     <!-- GSAP Core -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <!-- GSAP Plugins -->
@@ -32,6 +34,21 @@
                 <p>This is the bottom left quadrant.</p>
             </div>
             <div style="position: relative; width: 100%; height: 300px;"></div>
+            <!-- Taskbar placed at the bottom of the intro section. JS will toggle fixed positioning when scrolled. -->
+            <div class="colored glass taskbar-container window" id="page-taskbar">
+                <div class="title-bar">
+                    <div class="start-button">
+                        <img id="start-button" src="images/icons/pcIcon.png" alt="Start">
+                    </div>
+                    <div id="spotlight-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <div id="taskbar" class="taskbar-btns"></div>
+                    <div class="clock" id="clock"></div>
+                </div>
+            </div>
         </section>
 
     <section class="sticky-cols">
@@ -96,6 +113,8 @@
     </section>
 </main>
 
+    
+
     <!-- SVG Filter for Liquid Glass Effect -->
     <svg style="display: none" xmlns="http://www.w3.org/2000/svg">
         <filter id="glass-blur" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox">
@@ -104,6 +123,8 @@
         </filter>
     </svg>
 
+    <!-- Taskbar script (from taskbar example) -->
+    <script src="tmp/taskbarExample.js"></script>
     <script src="home.js"></script>
 </body>
 </html>

@@ -307,4 +307,65 @@ document.addEventListener("DOMContentLoaded", () => {
             if (sticky) sticky.classList.add('bg-key-missing');
         });
     }
+
+    // Taskbar sticky behavior: place taskbar at bottom of the .intro section
+    // initially, then make it stick to the top of the viewport when scrolled
+    // past the intro's bottom. Revert when scrolling back up.
+    (function setupTaskbarSticky(){
+        const intro = document.querySelector('.intro');
+        const taskbar = document.getElementById('page-taskbar');
+        if (!intro || !taskbar) return;
+
+        // Ensure the taskbar has no conflicting inline positioning initially
+        taskbar.style.position = taskbar.style.position || 'absolute';
+
+        const updatePosition = () => {
+            const tbHeight = taskbar.offsetHeight || 56;
+            const introBottomY = intro.offsetTop + intro.offsetHeight; // document Y coordinate
+            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+            if (scrollY >= introBottomY - tbHeight) {
+                // stick to top
+                if (!taskbar.classList.contains('stuck')) {
+                    taskbar.classList.add('stuck');
+                    taskbar.style.position = 'fixed';
+                    taskbar.style.top = '0';
+                    taskbar.style.left = '0';
+                    taskbar.style.right = '0';
+                    taskbar.style.width = '100%';
+                    taskbar.style.zIndex = '9999';
+                }
+            } else {
+                // place at the bottom of intro (absolute positioned relative to document)
+                if (taskbar.classList.contains('stuck')) taskbar.classList.remove('stuck');
+                const top = intro.offsetTop + intro.offsetHeight - tbHeight;
+                taskbar.style.position = 'absolute';
+                taskbar.style.top = top + 'px';
+                taskbar.style.left = '0';
+                taskbar.style.right = '0';
+                taskbar.style.width = '100%';
+                taskbar.style.zIndex = '1000';
+            }
+        };
+
+        const init = () => {
+            // compute and set initial placement
+            updatePosition();
+        };
+
+        // listen both to Lenis (smooth scroll lib) and native scroll events
+        try {
+            if (typeof lenis !== 'undefined' && lenis && typeof lenis.on === 'function') {
+                lenis.on('scroll', updatePosition);
+            }
+        } catch (e) {
+            // ignore if lenis not available
+        }
+
+        window.addEventListener('scroll', updatePosition, { passive: true });
+        window.addEventListener('resize', () => { setTimeout(updatePosition, 60); });
+
+        // set initial after layout
+        window.requestAnimationFrame(() => setTimeout(init, 0));
+    })();
 });
