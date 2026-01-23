@@ -648,7 +648,12 @@ ul.tree-view details[open]>summary:before {
 }
 
 .window.glass {
-    backdrop-filter: blur(1.5px)
+    /* Increased heavily so the blur is obvious for debugging/testing. Add
+       -webkit- prefix for broader support and will-change hint for smoother
+       rendering. */
+    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px);
+    will-change: backdrop-filter;
 }
 
 .window.glass:before {
@@ -1348,7 +1353,18 @@ body,html {
 }
 
 .colored:before,.colored>.title-bar {
-    background: #ec1db8
+    /* Use a semi-transparent color so backdrop-filter can blur the page
+       contents underneath the title bar. The original opaque hex was
+       preventing any backdrop effect. */
+    background: rgba(236, 29, 184, 0.22);
+}
+
+/* Ensure the title-bar itself applies the heavy blur and has a vendor prefixed
+   version for broader browser support. Keeping the blur here makes the taskbar
+   area very visually obvious during testing. */
+.colored>.title-bar {
+    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px);
 }
 
 .colored {
@@ -1358,6 +1374,55 @@ body,html {
 .custom {
     justify-content: center
 }
+
+/* ---- Debug/force override for title-bar backdrop blur ----
+   This rule is intentionally high-specificity and uses !important so it
+   overrides the multiple gradient/background rules earlier in this file
+   while you debug visibility. It forces a semi-transparent background and
+   applies a very strong backdrop-filter so the blur is unmistakable.
+   Remove or reduce the values for production. */
+.taskbar-container .title-bar,
+.window.glass > .title-bar,
+.colored > .title-bar,
+.window > .title-bar {
+    background: rgba(236,29,184,0.18) !important; /* translucent */
+    background-image: none !important; /* remove opaque gradients */
+    -webkit-backdrop-filter: blur(60px) !important;
+    backdrop-filter: blur(60px) !important;
+    will-change: backdrop-filter, transform !important;
+    position: relative !important;
+    z-index: 10000 !important; /* keep it above other backgrounds */
+}
+/* ---- Extra temporary debug helpers (remove after debugging) ----
+/* Hide common pseudo-element backgrounds that often sit between the
+    title-bar and the page backdrop. If one of these is covering the
+    title-bar it will prevent backdrop-filter from blurring what's behind. */
+.window:before,
+.colored:before,
+.taskbar-container:before,
+.intro::before {
+     display: none !important;
+     opacity: 0 !important;
+}
+
+/* Force the title-bar to be fixed at the top during debugging so we can
+    eliminate stacking/positioning as the cause. This will change layout —
+    only use temporarily. */
+.taskbar-container .title-bar {
+     position: fixed !important;
+     top: 0 !important;
+     left: 0 !important;
+     right: 0 !important;
+     height: 48px !important;
+     padding: 8px 12px !important;
+     display: flex !important;
+     align-items: center !important;
+}
+
+/* If this still doesn't show a blur, try disabling hardware acceleration in
+    Chrome or open chrome://flags and search for 'Desktop site' or 'backdrop'
+    diagnostics — sometimes GPU compositing affects video layers being blur-able. */
+
 
 .custom button {
     padding: 0
