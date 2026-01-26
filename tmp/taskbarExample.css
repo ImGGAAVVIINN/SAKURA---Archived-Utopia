@@ -915,11 +915,7 @@ body,html {
     pointer-events: none;
     /* visual: a translucent layer that we'll strongly blur to emulate backdrop blur */
     background: rgba(255,255,255,0.15);
-    -webkit-filter: blur(40px);
-    filter: blur(40px);
-    /* try backdrop-filter as well where supported */
-    -webkit-backdrop-filter: blur(40px);
-    backdrop-filter: blur(40px);
+
     transition: opacity 150ms linear;
 }
 
