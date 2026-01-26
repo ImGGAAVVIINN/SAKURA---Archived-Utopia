@@ -307,65 +307,108 @@ document.addEventListener("DOMContentLoaded", () => {
             if (sticky) sticky.classList.add('bg-key-missing');
         });
     }
+});
 
-    // Taskbar sticky behavior: place taskbar at bottom of the .intro section
-    // initially, then make it stick to the top of the viewport when scrolled
-    // past the intro's bottom. Revert when scrolling back up.
-    (function setupTaskbarSticky(){
-        const intro = document.querySelector('.intro');
-        const taskbar = document.getElementById('page-taskbar');
-        if (!intro || !taskbar) return;
+// Sticky taskbar behavior (copied from tmp/taskbarExample.js, adapted)
+document.addEventListener('DOMContentLoaded', function () {
+    const taskbar = document.querySelector('.taskbar-container');
+    if (!taskbar) return;
 
-        // Ensure the taskbar has no conflicting inline positioning initially
-        taskbar.style.position = taskbar.style.position || 'absolute';
+    // Create a placeholder to avoid layout jump when taskbar becomes fixed
+    const placeholder = document.createElement('div');
+    placeholder.style.display = 'none';
+    placeholder.style.width = '100%';
+    taskbar.parentNode.insertBefore(placeholder, taskbar.nextSibling);
 
-        const updatePosition = () => {
-            const tbHeight = taskbar.offsetHeight || 56;
-            const introBottomY = intro.offsetTop + intro.offsetHeight; // document Y coordinate
-            const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    // Compute the initial offsetTop for the taskbar (distance from top of document)
+    let initialTop = taskbar.getBoundingClientRect().top + window.scrollY;
+    placeholder.style.height = taskbar.offsetHeight + 'px';
 
-            if (scrollY >= introBottomY - tbHeight) {
-                // stick to top
-                if (!taskbar.classList.contains('stuck')) {
-                    taskbar.classList.add('stuck');
-                    taskbar.style.position = 'fixed';
-                    taskbar.style.top = '0';
-                    taskbar.style.left = '0';
-                    taskbar.style.right = '0';
-                    taskbar.style.width = '100%';
-                    taskbar.style.zIndex = '9999';
-                }
-            } else {
-                // place at the bottom of intro (absolute positioned relative to document)
-                if (taskbar.classList.contains('stuck')) taskbar.classList.remove('stuck');
-                const top = intro.offsetTop + intro.offsetHeight - tbHeight;
-                taskbar.style.position = 'absolute';
-                taskbar.style.top = top + 'px';
-                taskbar.style.left = '0';
-                taskbar.style.right = '0';
-                taskbar.style.width = '100%';
-                taskbar.style.zIndex = '1000';
-            }
-        };
+    // Create a backdrop element that will sit behind the taskbar and apply blur
+    const backdrop = document.createElement('div');
+    backdrop.className = 'taskbar-backdrop';
+    backdrop.style.pointerEvents = 'none';
+    backdrop.style.position = 'absolute';
+    backdrop.style.zIndex = '9998';
+    // Initial placement (will be recalculated below)
+    const initialRect = taskbar.getBoundingClientRect();
+    backdrop.style.left = (initialRect.left + window.scrollX) + 'px';
+    backdrop.style.top = (initialRect.top + window.scrollY) + 'px';
+    backdrop.style.width = initialRect.width + 'px';
+    backdrop.style.height = initialRect.height + 'px';
+    // Visual blur (use both vendor prefix and standard)
+    backdrop.style.background = 'rgba(255,255,255,0.02)';
+    backdrop.style.backdropFilter = 'blur(8px)';
+    backdrop.style.webkitBackdropFilter = 'blur(8px)';
+    // Insert backdrop immediately after the taskbar so it sits behind it in the DOM
+    taskbar.parentNode.insertBefore(backdrop, taskbar.nextSibling);
 
-        const init = () => {
-            // compute and set initial placement
-            updatePosition();
-        };
+    let isFixed = false;
 
-        // listen both to Lenis (smooth scroll lib) and native scroll events
-        try {
-            if (typeof lenis !== 'undefined' && lenis && typeof lenis.on === 'function') {
-                lenis.on('scroll', updatePosition);
-            }
-        } catch (e) {
-            // ignore if lenis not available
+    function onScroll() {
+        const scrollY = window.scrollY || window.pageYOffset;
+        if (scrollY >= initialTop && !isFixed) {
+            // Fix the taskbar to the top of the viewport
+            const rect = taskbar.getBoundingClientRect();
+            taskbar.style.position = 'fixed';
+            taskbar.style.top = '0';
+            taskbar.style.left = rect.left + 'px';
+            taskbar.style.width = rect.width + 'px';
+            taskbar.style.zIndex = '9999';
+            placeholder.style.display = 'block';
+            // Make backdrop fixed and align to the top as well, behind taskbar
+            backdrop.style.position = 'fixed';
+            backdrop.style.top = '0';
+            backdrop.style.left = rect.left + 'px';
+            backdrop.style.width = rect.width + 'px';
+            backdrop.style.height = rect.height + 'px';
+            backdrop.style.display = '';
+            isFixed = true;
+        } else if (scrollY < initialTop && isFixed) {
+            // Restore original flow
+            taskbar.style.position = '';
+            taskbar.style.top = '';
+            taskbar.style.left = '';
+            taskbar.style.width = '';
+            taskbar.style.zIndex = '';
+            placeholder.style.display = 'none';
+            // Return backdrop to absolute positioning and hide until resized
+            backdrop.style.position = 'absolute';
+            backdrop.style.left = (taskbar.getBoundingClientRect().left + window.scrollX) + 'px';
+            backdrop.style.top = (taskbar.getBoundingClientRect().top + window.scrollY) + 'px';
+            backdrop.style.width = taskbar.offsetWidth + 'px';
+            backdrop.style.height = taskbar.offsetHeight + 'px';
+            isFixed = false;
         }
+    }
 
-        window.addEventListener('scroll', updatePosition, { passive: true });
-        window.addEventListener('resize', () => { setTimeout(updatePosition, 60); });
+    function onResize() {
+        // Recompute positions/sizes so fixed state remains aligned
+        placeholder.style.height = taskbar.offsetHeight + 'px';
+        if (isFixed) {
+            const phRect = placeholder.getBoundingClientRect();
+            taskbar.style.left = phRect.left + 'px';
+            taskbar.style.width = phRect.width + 'px';
+            // keep backdrop aligned when fixed
+            backdrop.style.left = phRect.left + 'px';
+            backdrop.style.width = phRect.width + 'px';
+            backdrop.style.height = taskbar.offsetHeight + 'px';
+        }
+        // recompute initialTop relative to document
+        initialTop = taskbar.getBoundingClientRect().top + window.scrollY;
+        // update backdrop when not fixed
+        if (!isFixed) {
+            const rect = taskbar.getBoundingClientRect();
+            backdrop.style.left = (rect.left + window.scrollX) + 'px';
+            backdrop.style.top = (rect.top + window.scrollY) + 'px';
+            backdrop.style.width = rect.width + 'px';
+            backdrop.style.height = rect.height + 'px';
+        }
+        onScroll();
+    }
 
-        // set initial after layout
-        window.requestAnimationFrame(() => setTimeout(init, 0));
-    })();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    // In case the page loads scrolled or content above changes dynamically
+    setTimeout(onResize, 200);
 });

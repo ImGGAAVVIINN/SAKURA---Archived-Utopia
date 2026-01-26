@@ -69,11 +69,6 @@
     overflow: visible;
 }
 
-.sticky-cols.has-bg-key{
-    top: 1.7%;
-    max-height: 95.5vh;
-}
-
 /* Intro background: use tmp.png and blend it with the video that bleeds up
    from the sticky section. The intro image fades at its bottom edge so the
    video's fade beneath it blends smoothly. */
@@ -81,6 +76,7 @@
     position: relative;
     z-index: 2; /* sit above the video but below sticky columns */
     overflow: visible;
+    max-height: 95svh; /* prevent overly tall intro on very large viewports */
 }
 .intro::before {
     content: '';
@@ -221,7 +217,6 @@ img {
 .sticky-cols.has-bg-key .col-content-wrapper {
     background-color: transparent; /* allow liquid glass effect to show through */
 }
-
 .sticky-cols.has-bg-key .col-img-wrapper {
     background-color: inherit; /* restore default */
 }
@@ -341,3 +336,88 @@ img {
         padding: 2rem;
     }
 }
+
+/* ===== Taskbar styles copied from tmp/taskbarExample.css ===== */
+/* Kept scoped to avoid interference with existing page styles */
+.taskbar-container {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.25rem 0.5rem;
+    display: block;
+    height: 3.75rem; /* matches example height */
+}
+.taskbar-container:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.taskbar-container .title-bar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 100%;
+}
+.taskbar-btns {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+    height: 100%;
+}
+.taskbar-btn {
+    height: 2.5rem;
+    min-width: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    position: relative;
+    padding: 0.25rem;
+}
+.taskbar-btn>div { position: relative; }
+.taskbar-btn img { width: 1.6rem; height: 1.6rem; display: block; }
+.taskbar-btn.active { box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+.start-button img { width: 2rem; height: 2rem; display: block; }
+#spotlight-button { width: 2.5rem; height: 2.5rem; display:flex; align-items:center; justify-content:center; }
+#spotlight-button svg { width: 1.25rem; height: 1.25rem; }
+.clock { min-width: 4.5rem; text-align: right; padding-right: 0.5rem; font-weight: 600; }
+
+/* Sticky helper: when the taskbar reaches the top we add .taskbar-sticky */
+.taskbar-sticky {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 9999 !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+/* Backdrop element used by the JS sticky code to preserve blur behind the
+   taskbar. JS will set sizing/positioning inline; keep these rules as a
+   visual fallback and to ensure it sits behind the taskbar. */
+.taskbar-backdrop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: auto;
+    z-index: 9997; /* behind the taskbar (taskbar uses 9999) */
+    pointer-events: none;
+    background: rgba(255,255,255,0.12);
+    -webkit-filter: blur(24px);
+    filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    transition: opacity 150ms linear;
+}
+.taskbar-placeholder { width: 100%; height: 3.75rem; display: none; }
+.taskbar-placeholder.show { display: block; }
+
+/* End copied taskbar styles */
