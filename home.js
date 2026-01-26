@@ -412,3 +412,77 @@ document.addEventListener('DOMContentLoaded', function () {
     // In case the page loads scrolled or content above changes dynamically
     setTimeout(onResize, 200);
 });
+
+// Minimal taskbar JS: clock updater and start menu toggle scoped to this taskbar.
+(function(){
+    // Clock + date display with optional timezone support and AM/PM (no seconds)
+    // If the #clock element has a `data-timezone` attribute (IANA tz string)
+    // it will be used; otherwise the browser locale/timezone is used.
+    function lt() {
+        var t = document.querySelector("#clock");
+        if (!t) return;
+
+        // Detect timezone via IP geolocation (cached on window). Runs in the
+        // user's browser so their IP is what the geolocation service will see.
+        async function detectTimezone() {
+            if (window.__detectedClockTZ) return window.__detectedClockTZ;
+            try {
+                // Use a short timeout so a blocked or slow request doesn't delay rendering
+                var controller = new AbortController();
+                var timeoutId = setTimeout(function() { controller.abort(); }, 2500);
+                var resp = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!resp.ok) throw new Error('tz fetch failed');
+                var json = await resp.json();
+                if (json && json.timezone) {
+                    window.__detectedClockTZ = json.timezone;
+                    return json.timezone;
+                }
+            } catch (e) {
+                // silently fail and fallback to browser locale
+            }
+            return undefined;
+        }
+
+        async function render() {
+            var now = new Date();
+            var tz = t.dataset && t.dataset.timezone ? t.dataset.timezone : undefined;
+            if (!tz) tz = await detectTimezone();
+            var timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+            var dateOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
+            try {
+                var timeFormatter = tz ? new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, timeOptions)) : new Intl.DateTimeFormat(undefined, timeOptions);
+                var dateFormatter = tz ? new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, dateOptions)) : new Intl.DateTimeFormat(undefined, dateOptions);
+                var timeStr = timeFormatter.format(now);
+                // Ensure AM/PM is capitalized (e.g. 'am' -> 'AM', 'a.m.' -> 'AM')
+                timeStr = timeStr.replace(/(a\.?m\.?|p\.?m\.?)/ig, function(m){ return m.toUpperCase().replace(/\./g,''); });
+                var dateStr = dateFormatter.format(now);
+                t.innerHTML = "<div>" + timeStr + "</div><div>" + dateStr + "</div>";
+            } catch (err) {
+                var timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+                timeStr = timeStr.replace(/(a\.?m\.?|p\.?m\.?)/ig, function(m){ return m.toUpperCase().replace(/\./g,''); });
+                var dateStr = now.toLocaleDateString();
+                t.innerHTML = "<div>" + timeStr + "</div><div>" + dateStr + "</div>";
+            }
+        }
+
+        // initial render (don't await detect) and then update every second
+        render();
+        setInterval(function() { render(); }, 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        lt();
+        var start = document.getElementById('start-button');
+        var startMenu = document.getElementById('start-menu');
+        if (start && startMenu) {
+            start.addEventListener('click', function(e){
+                e.stopPropagation();
+                startMenu.classList.toggle('show');
+            });
+            // click elsewhere closes the start menu
+            document.addEventListener('click', function(){ startMenu.classList.remove('show'); });
+            startMenu.addEventListener('click', function(e){ e.stopPropagation(); });
+        }
+    });
+})();

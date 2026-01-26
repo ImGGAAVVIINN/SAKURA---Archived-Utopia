@@ -387,7 +387,12 @@ img {
 .start-button img { width: 2rem; height: 2rem; display: block; }
 #spotlight-button { width: 2.5rem; height: 2.5rem; display:flex; align-items:center; justify-content:center; }
 #spotlight-button svg { width: 1.25rem; height: 1.25rem; }
-.clock { min-width: 4.5rem; text-align: right; padding-right: 0.5rem; font-weight: 600; }
+.clock { min-width: 4.5rem; text-align: right; padding-right: 0.5rem; font-weight: normal; }
+/* Center the top line (time) while keeping the date right-aligned. */
+.clock>div:first-child { display: block; width: 100%; text-align: center !important; }
+/* Ensure clock text and its children are not bold; use !important to
+    override any other taskbar styles that may apply bold weight. */
+.clock, .clock * { font-weight: normal !important; }
 
 /* Sticky helper: when the taskbar reaches the top we add .taskbar-sticky */
 .taskbar-sticky {

@@ -5,27 +5,53 @@
   // - data-format="12" or "24" (default: 24)
   // - data-seconds="true" to show seconds (default: false)
   function updateTaskbarClock() {
+    // This function will try to use a cached timezone (window.__detectedClockTZ)
+    // or fetch it via IP geolocation once. It formats time as HH:MM AM/PM
+    // and date on the second line.
     var el = document.getElementById('clock');
     if (!el) return;
-    var now = new Date();
-    var hours = now.getHours();
-    var minutes = now.getMinutes();
-    var seconds = now.getSeconds();
 
-    var format = (el.dataset.format === '12') ? '12' : '24';
-    var showSeconds = el.dataset.seconds === 'true';
-
-    if (format === '12') {
-      var ampm = hours >= 12 ? 'PM' : 'AM';
-      var hrs12 = hours % 12 || 12; // convert 0 -> 12
-      var parts = [String(hrs12).padStart(2,'0'), String(minutes).padStart(2,'0')];
-      if (showSeconds) parts.push(String(seconds).padStart(2,'0'));
-      el.textContent = parts.join(':') + ' ' + ampm;
-    } else {
-      var parts = [String(hours).padStart(2,'0'), String(minutes).padStart(2,'0')];
-      if (showSeconds) parts.push(String(seconds).padStart(2,'0'));
-      el.textContent = parts.join(':');
+    async function ensureTZ() {
+      if (el.dataset && el.dataset.timezone) return el.dataset.timezone;
+      if (window.__detectedClockTZ) return window.__detectedClockTZ;
+      try {
+        var controller = new AbortController();
+        var tid = setTimeout(function(){ controller.abort(); }, 2500);
+        var r = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+        clearTimeout(tid);
+        if (r.ok) {
+          var j = await r.json();
+          if (j && j.timezone) {
+            window.__detectedClockTZ = j.timezone;
+            return j.timezone;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      return undefined;
     }
+
+    (async function() {
+      var now = new Date();
+      var tz = el.dataset && el.dataset.timezone ? el.dataset.timezone : await ensureTZ();
+      var timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+      var dateOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
+      try {
+        var timeFormatter = tz ? new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, timeOptions)) : new Intl.DateTimeFormat(undefined, timeOptions);
+        var dateFormatter = tz ? new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, dateOptions)) : new Intl.DateTimeFormat(undefined, dateOptions);
+  var timeStr = timeFormatter.format(now);
+  // Ensure AM/PM is capitalized (e.g. 'am' -> 'AM', 'a.m.' -> 'AM')
+  timeStr = timeStr.replace(/(a\.?m\.?|p\.?m\.?)/ig, function(m){ return m.toUpperCase().replace(/\./g,''); });
+  var dateStr = dateFormatter.format(now);
+        el.innerHTML = "<div>" + timeStr + "</div><div>" + dateStr + "</div>";
+      } catch (err) {
+  var timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+  timeStr = timeStr.replace(/(a\.?m\.?|p\.?m\.?)/ig, function(m){ return m.toUpperCase().replace(/\./g,''); });
+  var dateStr = now.toLocaleDateString();
+        el.innerHTML = "<div>" + timeStr + "</div><div>" + dateStr + "</div>";
+      }
+    })();
   }
 
   setInterval(updateTaskbarClock, 1000);
