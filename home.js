@@ -307,6 +307,26 @@ document.addEventListener("DOMContentLoaded", () => {
             if (sticky) sticky.classList.add('bg-key-missing');
         });
     }
+
+    // Toggle a root-level `has-scrollbar` class when the document is scrollable.
+    // Some browsers render the viewport scrollbar on `document.documentElement`
+    // (html) so we add/remove the class there. This allows CSS to target the
+    // scrollbar pseudo-elements reliably.
+    function updateScrollbarClass() {
+        try {
+            const root = document.documentElement;
+            const isScrollable = root.scrollHeight > root.clientHeight;
+            root.classList.toggle('has-scrollbar', !!isScrollable);
+        } catch (e) {
+            // no-op on weird environments
+        }
+    }
+    // Run at load and on resize. Also run after a short timeout to catch
+    // late-loading content (fonts/media) that might change layout.
+    updateScrollbarClass();
+    window.addEventListener('resize', updateScrollbarClass, { passive: true });
+    window.addEventListener('load', updateScrollbarClass);
+    setTimeout(updateScrollbarClass, 250);
 });
 
 // Sticky taskbar behavior (copied from tmp/taskbarExample.js, adapted)
