@@ -365,6 +365,7 @@ img {
     gap: 0.5rem;
     height: 100%;
 }
+
 .taskbar-btns {
     display: flex;
     align-items: center;
@@ -380,7 +381,6 @@ img {
     justify-content: center;
     border-radius: 0.5rem;
     position: relative;
-    padding: 0.25rem;
 }
 .taskbar-btn>div { position: relative; }
 .taskbar-btn img { width: 1.6rem; height: 1.6rem; display: block; }
@@ -763,3 +763,5 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
 .has-scrollbar.debug-force::-webkit-scrollbar-button:active {
     border-color: #3c7fb1 !important;
 }
+
+

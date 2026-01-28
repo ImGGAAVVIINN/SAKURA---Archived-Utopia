@@ -68,6 +68,13 @@
 .colored:before, .colored>.title-bar { background: #ff476c }
 .colored { z-index: 1 }
 
+/* Ensure the taskbar element carrying all these classes has a small
+   visual top padding and no bottom padding as requested. */
+.colored.glass.taskbar-container.window {
+    padding-top: 1px;
+    padding-bottom: 0;
+}
+
 .taskbar-container:before {
     border-top: 1px solid #fff;
 }
@@ -95,9 +102,15 @@
     height: calc(100% + 2px);
     border-radius: 6px;
     border: 1px solid #000;
-    margin-right: 4px;
+    margin-right: 1px;
     position: relative;
     top: -1px;
+}
+
+.taskbar-btn {
+    box-sizing: border-box; /* ensure padding/border don't shrink content unexpectedly */
+    padding: 0; /* prevent external styles from adding padding (fixes .active state shrink) */
+    background: linear-gradient(150deg,#ffffff83,hsla(0,0%,100%,.5) 30%,transparent)
 }
 
 .taskbar-btn>div {
@@ -107,10 +120,11 @@
     width: 100%;
     position: relative;
     padding: 2px 0;
+    box-sizing: border-box; /* keep inner sizing predictable */
 }
 
 .taskbar-btn>div:after {
-    background: radial-gradient(circle,#fff 0,hsla(0,0%,100%,.3) 75%,transparent 100%);
+    background: radial-gradient(circle,#ffffff70 0,hsla(0,0%,100%,.3) 75%,transparent 100%);
     opacity: 0;
     transition: opacity .3s;
     display: block;
@@ -120,8 +134,13 @@
 }
 
 .taskbar-btn:hover>div:after { opacity: .5 }
-.taskbar-btn:active>div:after { opacity: 1 }
-.taskbar-btn img { height: 100%; width: auto; display: block; user-select: none }
+.taskbar-btn img { margin: auto; height: 100%; width: auto; display: block; user-select: none }
+
+
+.taskbar-btn.active {
+    background-color: #ff7f9281;
+    background: linear-gradient(150deg,#ff7f9283,#ff7f9255 100%,transparent);
+}
 
 /* Minimal start-menu rules so toggle works */
 .start-menu { display: none; position: fixed; left: 0; bottom: 45px; width: 420px; max-width: 100vw; min-width: 260px }
@@ -288,3 +307,53 @@
     box-shadow: 0 0 1px .5px #fff;
 }
 
+.window {
+    box-shadow: 0 0 5px 1px rgba(0,0,0,.6);
+    border: 1px solid rgba(0,0,0,.6);
+}
+
+/* Taskbar icon + label alignment */
+.icon-text {
+    display: inline-flex;
+    align-items: center; /* vertically center image and text */
+    gap: 0.5rem; /* spacing between icon and label */
+}
+.icon-text .icon {
+    width: 1.6rem; /* match existing taskbar icon sizing */
+    height: 1.6rem;
+    display: block;
+    object-fit: contain;
+}
+
+@media (max-width: 600px) {
+    .icon-text .taskbar-label { display: none; }
+}
+
+.taskbar-label {
+    font-size: 0.75rem;
+        text-shadow: 
+    2px 2px 0.2rem #00000070, 
+    -2px -2px 0.2rem #00000070, 
+    2px -2px 0.2rem #00000070, 
+    -2px 2px 0.2rem #00000070;
+}
+
+.intro-top-right>.window-wrapper>.window>.window-body
+{
+    /* faded background: overlay a semi-transparent white gradient above the image
+         to reduce its visual prominence. Adjust the alpha (0.55) to change fade. */
+    background-image: linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), url('https://preview.redd.it/frutiger-aero-aesthetic-in-genshin-impact-v0-odmllnfdth2f1.png?width=640&crop=smart&auto=webp&s=040d97f127e6c2ad31105f421be59b675c59384d');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}
+
+.intro-bottom-left>.window-wrapper>.window>.window-body
+{
+    /* faded background: overlay a semi-transparent white gradient above the image
+       to reduce its visual prominence. Adjust the alpha (0.55) to change fade. */
+    background-image: linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), url('https://media.licdn.com/dms/image/v2/D4E12AQGxNln4sKkPqw/article-cover_image-shrink_720_1280/B4EZXRm0VOGgAM-/0/1742978370834?e=2147483647&v=beta&t=9bqrAjryHh18QspmCmg-_FpAl33ddSvW_xZKKZfGFtY');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}

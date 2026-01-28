@@ -262,7 +262,7 @@ input[type=radio]+label:before {
 }
 
 input[type=radio]:active+label:before {
-    background: svg-load("icon/radio-border-disabled.html")
+    background: svg-load("./icon/radio-border-disabled.svg")
 }
 
 input[type=radio]:checked+label:after {
@@ -899,24 +899,6 @@ body,html {
     height: 45px;
     border-radius: 0;
     z-index: 9999!important
-}
-/* Taskbar backdrop blur fallback: place a blurred dummy element behind the taskbar panel */
-/* Ensure .intro can be the positioning context for the backdrop */
-.intro { position: relative; }
-.taskbar-container { position: relative; }
-.taskbar-blur-backdrop {
-    position: absolute;
-    /* place directly behind the taskbar container inside .intro */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: auto; /* will be sized by JS when fixed */
-    z-index: -1; /* sit behind the panel */
-    pointer-events: none;
-    /* visual: a translucent layer that we'll strongly blur to emulate backdrop blur */
-    background: rgba(255,255,255,0.15);
-
-    transition: opacity 150ms linear;
 }
 
 .taskbar-container:before {
