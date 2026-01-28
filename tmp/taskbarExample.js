@@ -12215,11 +12215,11 @@ parcelRequire = function(e, r, t, n) {
     }
     , {}],
     "NuOi": [function(require, module, exports) {
-        module.exports = "starthover.d6387153.png";
+        module.exports = "images/icons/starthover.png";
     }
     , {}],
     "WIpo": [function(require, module, exports) {
-        module.exports = "startregular.d6562b71.png";
+        module.exports = "startregular.png";
     }
     , {}],
     "CT4k": [function(require, module, exports) {

@@ -60,13 +60,83 @@
     var start = document.getElementById('start-button');
     var startMenu = document.getElementById('start-menu');
     if (start && startMenu) {
+      // Click toggles start menu (existing behavior)
       start.addEventListener('click', function(e){
         e.stopPropagation();
         startMenu.classList.toggle('show');
       });
+
+      // Hover / focus behavior: swap the image src to a hover variant when available.
+      // Prefer explicit data-hover attribute; otherwise attempt a sensible filename replacement
+      // by swapping "startregular" -> "starthover" in the src.
+      (function(){
+        try {
+          var regularSrc = start.getAttribute('src') || '';
+          var hoverSrc = start.dataset && start.dataset.hover ? start.dataset.hover : regularSrc.replace('startregular', 'starthover');
+          // Store originals on dataset so other scripts can inspect them
+          start.dataset._regularSrc = regularSrc;
+          start.dataset._hoverSrc = hoverSrc;
+
+          var applyHover = function(){ if (hoverSrc) start.src = hoverSrc; };
+          var removeHover = function(){ if (regularSrc) start.src = regularSrc; };
+
+          // pointerover/pointerout covers mouse and stylus; also add focus/blur for keyboard
+          start.addEventListener('pointerover', applyHover);
+          start.addEventListener('pointerout', removeHover);
+          start.addEventListener('focus', applyHover);
+          start.addEventListener('blur', removeHover);
+
+          // For touch devices, a quick touchstart can show hover while pressed
+          start.addEventListener('touchstart', applyHover, { passive: true });
+          start.addEventListener('touchend', removeHover, { passive: true });
+        } catch (e) {
+          // defensive: do nothing on error
+        }
+      })();
+
       // click elsewhere closes the start menu
       document.addEventListener('click', function(){ startMenu.classList.remove('show'); });
       startMenu.addEventListener('click', function(e){ e.stopPropagation(); });
     }
+
+    // Progressive start-button shift when the taskbar is scrolled toward the top.
+    // This computes a small translateY value and sets the --start-shift CSS variable
+    // on the taskbar container. It's performant (rAF) and has a graceful default.
+    (function(){
+      try {
+        var taskbar = document.querySelector('.taskbar-container');
+        if (!taskbar) return;
+
+        var maxShift = 8; // maximum shift in px when taskbar reaches top
+        var threshold = 120; // start applying shift when taskbar top is within this px of viewport top
+        var ticking = false;
+
+        function updateShift() {
+          ticking = false;
+          var rect = taskbar.getBoundingClientRect();
+          var top = rect.top;
+          // t goes from 0 (no shift when taskbar far from top) to 1 (full shift when at/above top)
+          var t = (threshold - top) / threshold;
+          if (t < 0) t = 0;
+          if (t > 1) t = 1;
+          var shift = Math.round(t * maxShift);
+          taskbar.style.setProperty('--start-shift', shift + 'px');
+        }
+
+        function onScroll() {
+          if (!ticking) {
+            ticking = true;
+            requestAnimationFrame(updateShift);
+          }
+        }
+
+        // initialize and attach listeners
+        updateShift();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+      } catch (e) {
+        // defensive: don't break taskbar if anything goes wrong
+      }
+    })();
   });
 })();

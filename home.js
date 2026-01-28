@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Use a short timeout so a blocked or slow request doesn't delay rendering
                 var controller = new AbortController();
                 var timeoutId = setTimeout(function() { controller.abort(); }, 2500);
-                var resp = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+//                var resp = await fetch('https://ipapi.co/json/', { signal: controller.signal });
                 clearTimeout(timeoutId);
                 if (!resp.ok) throw new Error('tz fetch failed');
                 var json = await resp.json();

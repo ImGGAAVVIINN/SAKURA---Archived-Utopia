@@ -6,6 +6,7 @@
     z-index: 9999 !important;
     position: relative;
     color: white;
+    overflow: visible; /* allow children (start orb) to protrude outside the taskbar */
 }
 
 /* Basic window/panel styles (from the taskbar example) so .window and
@@ -13,8 +14,18 @@
 .window {
     font: 9pt Segoe UI, sans-serif;
     box-shadow: 0 0 5px 1px rgba(0,0,0,.6);
+        box-shadow: inset 0 0 .5px .5px #fff;
+
     border: 1px solid rgba(0,0,0,.6);
     position: relative;
+}
+
+/* Only apply rounded corners and clipping to normal windows — not the taskbar
+   which also uses the .window class. This prevents the taskbar from cutting
+   off elements that intentionally protrude (like the start orb). */
+.window:not(.taskbar-container) {
+    border-radius: 6px; /* ensure panel corners are rounded */
+    overflow: hidden;   /* clip children so corners remain rounded */
 }
 
 .window:before {
@@ -26,8 +37,6 @@
     background: linear-gradient(transparent 20%,hsla(0,0%,100%,.7) 40%,transparent 41%),linear-gradient(90deg,hsla(0,0%,100%,.4),rgba(0,0,0,.1),hsla(0,0%,100%,.2)),linear-gradient(55deg,transparent,rgba(0,0,0,.1) 20%,rgba(0,0,0,.1) 50%,transparent 53%),#4580c4;
 }
 
-.window.glass {
-}
 
 .window.glass:before {
     opacity: .5;
@@ -56,7 +65,7 @@
    `.taskbar-container .title-bar` and `.window.glass>.title-bar` so other
    page elements using `.title-bar` keep their original styling. */
 
-.colored:before, .colored>.title-bar { background: #ec1db8 }
+.colored:before, .colored>.title-bar { background: #ff476c }
 .colored { z-index: 1 }
 
 .taskbar-container:before {
@@ -119,10 +128,163 @@
 .start-menu.show { display: block }
 
 /* Make sure taskbar title-bar children align */
-.start-button { margin-left: 8px; cursor: pointer }
+.start-button { 
+    margin-left: 8px; 
+    cursor: pointer;
+    width: 3rem;
+    height: 5rem;
+    bottom: 1rem;
+    padding-bottom: 95px;
+    /* Allow progressive vertical shift when the taskbar is scrolled toward the top.
+       The JS will set --start-shift (e.g. "6px"). We keep a small transition so
+       movement looks smooth. */
+    transform: translateY(var(--start-shift, 0px));
+    transition: transform 150ms linear;
+}
+
+#start-button {
+    width: 3rem;
+    height: 5rem;
+}
+
 .clock { margin-left: 8px; padding: 0 8px; font-weight: 600 }
 
 /* Small responsive tweak */
 @media (max-width: 600px) {
     .taskbar-btn { width: 44px }
 }
+
+/* Restored window title-bar / controls and window-body styles
+   Scoped to `.window` so the taskbar's own `.title-bar` (in
+   `.taskbar-container`) keeps its compact taskbar-specific styling. */
+.window.glass {
+    backdrop-filter: blur(1.5px);
+    
+}
+
+.window.glass:before {
+    opacity: .5;
+    filter: brightness(1.4);
+}
+
+.window>.title-bar {
+    border: 0;
+    
+}
+
+.window .title-bar {
+    font: 9pt Segoe UI, sans-serif;
+    /* remove title-bar border to avoid a visible bottom border */
+    border: 0;
+    border-radius: 6px 6px 0 0;
+    padding: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg,hsla(0,0%,100%,.4),rgba(0,0,0,.1),hsla(0,0%,100%,.2)),linear-gradient(55deg,transparent,rgba(0,0,0,.1) 20%,rgba(0,0,0,.1) 50%,transparent 53%),#4580c4;
+}
+
+.window .title-bar-text {
+    color: #000;
+    letter-spacing: 0;
+    line-height: 15px;
+    text-shadow: 0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff;
+}
+
+.title-bar-controls {
+    display: flex;
+    background: hsla(0,0%,100%,.2);
+    border: 1px solid rgba(0,0,0,.6);
+    border-top: 0;
+    border-radius: 0 0 5px 5px;
+    margin-top: -6px;
+    box-shadow: 0 0 2px #fff
+}
+
+.title-bar-controls button {
+    min-width: 26px;
+    min-height: 20px;
+    padding: 0;
+    border: 0;
+    border-right: 1px solid rgba(0,0,0,.6);
+    border-radius: 0;
+    box-shadow: inset 0 0 0 .5px #eee;
+    box-sizing: border-box;
+    background: linear-gradient(hsla(0,0%,100%,.3),hsla(0,0%,100%,.3) 45%,rgba(0,0,0,.1) 50%,rgba(0,0,0,.1) 75%,hsla(0,0%,100%,.5))
+}
+
+.title-bar-controls button:first-child {
+    border-bottom-left-radius: 5px
+}
+
+.title-bar-controls button:last-child {
+    border: 0;
+    border-bottom-right-radius: 5px
+}
+
+.title-bar-controls button:focus {
+    outline: none
+}
+
+.title-bar-controls button:hover {
+    background: radial-gradient(circle at 50% 100%,#2aceda,transparent 60%),linear-gradient(#a9d2e8 50%,#196c9b 0)
+}
+
+.title-bar-controls button:active {
+    box-shadow: inset 0 0 0 .5px #eee;
+    background: radial-gradient(circle at 50% 100%,#0bfdfa,transparent 60%),linear-gradient(#86a7bc 50%,#092747 0)
+}
+
+.title-bar-controls button:before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%
+}
+
+.title-bar-controls button[aria-label=Minimize]:before {
+    background: url(/images/icons/winControl/minimize.png) no-repeat center 10px
+}
+
+.title-bar-controls button[aria-label=Maximize]:before {
+    /* maximize image missing in repository; temporarily reuse restore.png
+       until a dedicated maximize.png is added. */
+    background: url(/images/icons/winControl/restore.png) no-repeat center;
+    background-size: 12px 12px;
+}
+
+.title-bar-controls button[aria-label=Restore]:before {
+    background: url(/images/icons/winControl/restore.png) no-repeat center;
+    background-size: 12px 12px;
+}
+
+.title-bar-controls button[aria-label=Close] {
+    background-color: #d04a37;
+    width: 45px
+}
+
+.title-bar-controls button[aria-label=Close]:before {
+    background: url(/images/icons/winControl/close.png) no-repeat center;
+    background-size: 10px 10px;
+}
+
+.title-bar-controls button[aria-label=Close]:hover {
+    filter: contrast(1.3)
+}
+
+.title-bar-controls button[aria-label=Close]:active,.title-bar-controls button[aria-label=Close]:hover {
+    background-image: linear-gradient(hsla(0,0%,100%,.3),hsla(0,0%,100%,.3) 45%,rgba(0,0,0,.1) 50%,rgba(0,0,0,.1) 75%,hsla(0,0%,100%,.5))
+}
+
+.title-bar-controls button[aria-label=Close]:active {
+    filter: contrast(1.3) brightness(.7)
+}
+
+.window .window-body {
+    margin: 0 6px 6px;
+    padding: 6px;
+    border: 1px solid rgba(0,0,0,.6);
+    background: #f0f0f0;
+    box-shadow: 0 0 1px .5px #fff;
+}
+

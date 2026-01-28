@@ -25,12 +25,49 @@
     <main>
         <section class="intro">
             <div class="intro-top-right" style="color: #F86BC7; position: absolute; top: 2rem; right: 0; width: 50%; height: 50%; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding: 2rem; box-sizing: border-box;">
-                <h1>Top Right Title</h1>
-                <p>This is the top right quadrant.</p>
+
+
+                <div class="window-wrapper no-padding" style="opacity: 1; z-index: 1; top: 2rem; right: 2rem; min-width: 360px; min-height: 400px;">
+                    <div class="window colored glass">
+                        <div class="title-bar dbl-maximize">
+                            <div class="title-bar-text">SAKURA - </div>
+                            <div class="title-bar-controls">
+                                <button aria-label="Minimize" class="minimize"></button>
+                                <button aria-label="Maximize" class="maximize"></button>
+                                <button aria-label="Close" class="close"></button>
+                            </div>
+                        </div>
+                        <div class="window-body">
+                            <div class="notepad-container" contenteditable=""><pre>
+                                <h1>Top Right Title</h1>
+                                <p>This is the top right quadrant.</p>
+                            </pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
+
             </div>
             <div class="intro-bottom-left" style="color: #0056D7; position: absolute; bottom: 3rem; left: 0; width: 50%; height: 50%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 2rem; box-sizing: border-box;">
-                <h1>Bottom Left Title</h1>
-                <p>This is the bottom left quadrant.</p>
+                <div class="window-wrapper no-padding" style="opacity: 1; z-index: 1; top: 100rem; left: 354px; min-width: 360px;">
+                    <div class="window colored glass">
+                        <div class="title-bar dbl-maximize">
+                            <div class="title-bar-text">Archived Utopia</div>
+                            <div class="title-bar-controls">
+                                <button aria-label="Minimize" class="minimize"></button>
+                                <button aria-label="Maximize" class="maximize"></button>
+                                <button aria-label="Close" class="close"></button>
+                            </div>
+                        </div>
+                        <div class="window-body">
+                            <div class="notepad-container" contenteditable=""><pre>
+                                <h1>Bottom Left Title</h1>
+                                <p>This is the bottom left quadrant.</p>
+                            </pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div style="position: relative; width: 100%; height: 300px;"></div>
             <!-- taskbar backdrop lives inside .intro so we can emulate backdrop-filter when
@@ -82,7 +119,7 @@
     <div class="colored glass taskbar-container window">
         <div class="title-bar">
             <div class="start-button">
-                <img id="start-button" src="startregular.d6562b71.png" alt="start">
+                <img id="start-button" src="images/icons/startregular.png" alt="start">
             </div>
             <div id="taskbar" class="taskbar-btns"></div>
             <div class="clock" id="clock"></div>
