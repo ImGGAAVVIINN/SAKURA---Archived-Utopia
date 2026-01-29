@@ -697,7 +697,8 @@ document.addEventListener('DOMContentLoaded', function () {
         uniform float iTime;
         uniform vec4 iMouse;
         uniform sampler2D iChannel0;
-        uniform vec2 iImageResolution;
+  uniform vec2 iImageResolution;
+  uniform float uEnabled;
 
         void mainImage(out vec4 fragColor, in vec2 fragCoord)
         {
@@ -707,9 +708,9 @@ document.addEventListener('DOMContentLoaded', function () {
           const float NUM_HALF = 0.5;
           const float NUM_TWO = 2.0;
           const float POWER_EXPONENT = 6.0;
-          const float MASK_MULTIPLIER_1 = 80000.0;
-          const float MASK_MULTIPLIER_2 = 76000.0;
-          const float MASK_MULTIPLIER_3 = 88000.0;
+          const float MASK_MULTIPLIER_1 = 50000.0;
+          const float MASK_MULTIPLIER_2 = 47500.0;
+          const float MASK_MULTIPLIER_3 = 55000.0;
           const float LENS_MULTIPLIER = 5000.0;
           const float MASK_STRENGTH_1 = 8.0;
           const float MASK_STRENGTH_2 = 16.0;
@@ -718,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const float MASK_THRESHOLD_2 = 0.9;
           const float MASK_THRESHOLD_3 = 1.5;
           const float SAMPLE_RANGE = 4.0;
-          const float SAMPLE_OFFSET = 0.5;
+          const float SAMPLE_OFFSET = 1.0;
           const float GRADIENT_RANGE = 0.2;
           const float GRADIENT_OFFSET = 0.1;
           const float GRADIENT_EXTREME = -1000.0;
@@ -745,8 +746,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
           fragColor = vec4(NUM_ZERO);
           float transition = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
+          // global enable/disable (1.0 = on, 0.0 = off)
+          float eff = transition * uEnabled;
 
-          if (transition > NUM_ZERO) {
+          // only run the expensive sampling when the effect is enabled
+          if (eff > NUM_ZERO) {
             vec2 lens = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBox * LENS_MULTIPLIER) + NUM_HALF);
             float total = NUM_ZERO;
             for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
@@ -767,7 +771,8 @@ document.addEventListener('DOMContentLoaded', function () {
             vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0); // light pink tint
             vec4 lighting = clamp(fragColor * pinkTint + vec4(rb1) * gradient + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
 
-            fragColor = mix(texture2D(iChannel0, texUV), lighting, transition);
+            // apply effect scaled by eff (will be 0 when disabled)
+            fragColor = mix(texture2D(iChannel0, texUV), lighting, eff);
           } else {
             fragColor = texture2D(iChannel0, texUV);
           }
@@ -818,9 +823,23 @@ document.addEventListener('DOMContentLoaded', function () {
         mouse: gl.getUniformLocation(program, "iMouse"),
         texture: gl.getUniformLocation(program, "iChannel0"),
         imageResolution: gl.getUniformLocation(program, "iImageResolution"),
+        enabled: gl.getUniformLocation(program, "uEnabled"),
       };
 
-      let mouse = [canvas.width - 190, 180]; // bottom right
+      let mouse = [canvas.width - 210, 200]; // bottom right
+
+      // Keep canvas visible at all times. Toggle the glass effect (shader) via
+      // the `uEnabled` uniform when the user clicks the music tray icon.
+      let glassEnabled = 1.0;
+      const musicIcon = document.querySelector('.small-icon.music');
+      if (musicIcon) {
+        musicIcon.style.cursor = 'pointer';
+        musicIcon.addEventListener('click', () => {
+          glassEnabled = glassEnabled ? 0.0 : 1.0;
+          try { gl.uniform1f(uniforms.enabled, glassEnabled); } catch (e) { /* ignore until program ready */ }
+          musicIcon.classList.toggle('glass-off', glassEnabled === 0.0);
+        });
+      }
 
       const texture = gl.createTexture();
       const setupTexture = () => {
@@ -838,6 +857,8 @@ document.addEventListener('DOMContentLoaded', function () {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.uniform2f(uniforms.imageResolution, img.width, img.height);
+        // ensure effect starts enabled
+        try { gl.uniform1f(uniforms.enabled, 1.0); } catch (e) { }
       };
 
       if (img.complete) {
