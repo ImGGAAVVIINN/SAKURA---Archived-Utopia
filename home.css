@@ -394,6 +394,19 @@ img {
     override any other taskbar styles that may apply bold weight. */
 .clock, .clock * { font-weight: normal !important; }
 
+.taskbar-icons {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-direction: row-reverse;
+}
+
+.small-icon {
+    width: 1rem;
+    height: 1rem;
+    display: block;
+}
+
 /* Sticky helper: when the taskbar reaches the top we add .taskbar-sticky */
 .taskbar-sticky {
     position: fixed !important;
@@ -765,3 +778,377 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
 }
 
 
+
+
+
+
+
+/*
+      _             _            __   _            _    _                   _____  _____ _____ 
+     | |           | |          / _| | |          | |  | |                 / ____|/ ____/ ____|
+  ___| |_ __ _ _ __| |_    ___ | |_  | |_ __ _ ___| | _| |__   __ _ _ __  | |    | (___| (___  
+ / __| __/ _` | '__| __|  / _ \|  _| | __/ _` / __| |/ / '_ \ / _` | '__| | |     \___ \\___ \ 
+ \__ \ || (_| | |  | |_  | (_) | |   | || (_| \__ \   <| |_) | (_| | |    | |____ ____) |___) |
+ |___/\__\__,_|_|   \__|  \___/|_|    \__\__,_|___/_|\_\_.__/ \__,_|_|     \_____|_____/_____/                                                                                      
+*/                                                                                        
+                                                                                        
+
+/* Minimal taskbar styles extracted for embedding into home.html
+   Keep selectors scoped and small to avoid breaking existing styles. */
+
+.taskbar-container {
+    height: 45px;
+    z-index: 9999 !important;
+    position: relative;
+    color: white;
+    overflow: visible; /* allow children (start orb) to protrude outside the taskbar */
+}
+
+/* Basic window/panel styles (from the taskbar example) so .window and
+   .glass/.colored classes render the expected panel background and glass effect. */
+.window {
+    font: 9pt Segoe UI, sans-serif;
+    box-shadow: 0 0 5px 1px rgba(0,0,0,.6);
+        box-shadow: inset 0 0 .5px .5px #fff;
+
+    border: 1px solid rgba(0,0,0,.6);
+    position: relative;
+}
+
+/* Only apply rounded corners and clipping to normal windows — not the taskbar
+   which also uses the .window class. This prevents the taskbar from cutting
+   off elements that intentionally protrude (like the start orb). */
+.window:not(.taskbar-container) {
+    border-radius: 6px; /* ensure panel corners are rounded */
+    overflow: hidden;   /* clip children so corners remain rounded */
+}
+
+.window:before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(transparent 20%,hsla(0,0%,100%,.7) 40%,transparent 41%),linear-gradient(90deg,hsla(0,0%,100%,.4),rgba(0,0,0,.1),hsla(0,0%,100%,.2)),linear-gradient(55deg,transparent,rgba(0,0,0,.1) 20%,rgba(0,0,0,.1) 50%,transparent 53%),#4580c4;
+}
+
+
+.window.glass:before {
+    opacity: .;
+    filter: brightness(1.4);
+}
+
+.window.glass>.title-bar {
+    background: rgba(255,255,255,0);
+}
+
+/* Backdrop lives inside the .intro to emulate backdrop-filter when taskbar is fixed */
+.taskbar-blur-backdrop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: auto;
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(255,255,255,0.15);
+    transition: opacity 150ms linear;
+}
+
+/* NOTE: global .title-bar rules removed to avoid double-styling the taskbar.
+   Taskbar-specific title-bar styles are scoped below with
+   `.taskbar-container .title-bar` and `.window.glass>.title-bar` so other
+   page elements using `.title-bar` keep their original styling. */
+
+.colored:before, .colored>.title-bar { background: #ff476c }
+.colored { z-index: 1 }
+
+/* Ensure the taskbar element carrying all these classes has a small
+   visual top padding and no bottom padding as requested. */
+.colored.glass.taskbar-container.window {
+    padding-top: 1px;
+    padding-bottom: 0;
+}
+
+.taskbar-container:before {
+    border-top: 1px solid #fff;
+}
+
+.taskbar-container .title-bar {
+    width: 100%;
+    height: 100%;
+    
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.taskbar-btns {
+    height: 100%;
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    gap: 4px;
+    padding-left: 8px;
+}
+
+.taskbar-btn {
+    width: 60px;
+    height: calc(100% + 2px);
+    border-radius: 6px;
+    border: 1px solid #000;
+    margin-right: 1px;
+    position: relative;
+    top: -1px;
+}
+
+.taskbar-btn {
+    box-sizing: border-box; /* ensure padding/border don't shrink content unexpectedly */
+    padding: 0; /* prevent external styles from adding padding (fixes .active state shrink) */
+}
+
+.taskbar-btn>div {
+    border-radius: 6px;
+    border: 1px solid hsla(0,0%,100%,.3);
+    height: 100%;
+    width: 100%;
+    position: relative;
+    padding: 2px 0;
+    box-sizing: border-box; /* keep inner sizing predictable */
+}
+
+.taskbar-btn>div:after {
+    background: radial-gradient(circle,#ffffff70 0,hsla(0,0%,100%,.3) 75%,transparent 100%);
+    opacity: 0;
+    transition: opacity .3s;
+    display: block;
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.taskbar-btn:hover>div:after { opacity: .5 }
+.taskbar-btn img { margin: auto; height: 100%; width: auto; display: block; user-select: none }
+
+
+.taskbar-btn.active {
+    background: linear-gradient(150deg,#ffffff83,hsla(0,0%,100%,.5) 30%,transparent)
+
+}
+
+/* Minimal start-menu rules so toggle works */
+.start-menu { display: none; position: fixed; left: 0; bottom: 45px; width: 420px; max-width: 100vw; min-width: 260px }
+.start-menu.show { display: block }
+
+/* Make sure taskbar title-bar children align */
+.start-button { 
+    margin-right: 8px; 
+    cursor: pointer;
+    width: 3rem;
+    height: 3rem;
+    bottom: 1rem;
+    padding-bottom: 75px;
+    /* Allow progressive vertical shift when the taskbar is scrolled toward the top.
+       The JS will set --start-shift (e.g. "6px"). We keep a small transition so
+       movement looks smooth. */
+    transform: translateY(var(--start-shift, 0px));
+    transition: transform 150ms linear;
+}
+
+#start-button {
+    width: 3.8rem;
+    height: 3.8rem;
+    filter: drop-shadow(0 0 0.2rem rgb(0, 0, 0));
+}
+
+.clock { margin-left: 8px; padding: 0 8px; font-weight: 600 }
+
+/* Small responsive tweak */
+@media (max-width: 600px) {
+    .taskbar-btn { width: 44px }
+}
+
+/* Restored window title-bar / controls and window-body styles
+   Scoped to `.window` so the taskbar's own `.title-bar` (in
+   `.taskbar-container`) keeps its compact taskbar-specific styling. */
+.window.glass {
+    backdrop-filter: blur(1.5px);
+    
+}
+
+.window.glass:before {
+    opacity: .5;
+    filter: brightness(1.4);
+}
+
+.window>.title-bar {
+    border: 0;
+    
+}
+
+.window .title-bar {
+    font: 9pt Segoe UI, sans-serif;
+    /* remove title-bar border to avoid a visible bottom border */
+    border: 0;
+    border-radius: 6px 6px 0 0;
+    padding: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg,hsla(0,0%,100%,.4),rgba(0,0,0,.1),hsla(0,0%,100%,.2)),linear-gradient(55deg,transparent,rgba(0,0,0,.1) 20%,rgba(0,0,0,.1) 50%,transparent 53%),#4580c4;
+}
+
+.window .title-bar-text {
+    color: #000;
+    letter-spacing: 0;
+    line-height: 15px;
+    text-shadow: 0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff,0 0 10px #fff;
+}
+
+.title-bar-controls {
+    display: flex;
+    background: hsla(0,0%,100%,.2);
+    border: 1px solid rgba(0,0,0,.6);
+    border-top: 0;
+    border-radius: 0 0 5px 5px;
+    margin-top: -6px;
+    box-shadow: 0 0 2px #fff
+}
+
+.title-bar-controls button {
+    min-width: 26px;
+    min-height: 20px;
+    padding: 0;
+    border: 0;
+    border-right: 1px solid rgba(0,0,0,.6);
+    border-radius: 0;
+    box-shadow: inset 0 0 0 .5px #eee;
+    box-sizing: border-box;
+    background: linear-gradient(hsla(0,0%,100%,.3),hsla(0,0%,100%,.3) 45%,rgba(0,0,0,.1) 50%,rgba(0,0,0,.1) 75%,hsla(0,0%,100%,.5))
+}
+
+.title-bar-controls button:first-child {
+    border-bottom-left-radius: 5px
+}
+
+.title-bar-controls button:last-child {
+    border: 0;
+    border-bottom-right-radius: 5px
+}
+
+.title-bar-controls button:focus {
+    outline: none
+}
+
+.title-bar-controls button:hover {
+    background: radial-gradient(circle at 50% 100%,#2aceda,transparent 60%),linear-gradient(#a9d2e8 50%,#196c9b 0)
+}
+
+.title-bar-controls button:active {
+    box-shadow: inset 0 0 0 .5px #eee;
+    background: radial-gradient(circle at 50% 100%,#0bfdfa,transparent 60%),linear-gradient(#86a7bc 50%,#092747 0)
+}
+
+.title-bar-controls button:before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%
+}
+
+.title-bar-controls button[aria-label=Minimize]:before {
+    background: url(/images/icons/winControl/minimize.png) no-repeat center 10px
+}
+
+.title-bar-controls button[aria-label=Maximize]:before {
+    /* maximize image missing in repository; temporarily reuse restore.png
+       until a dedicated maximize.png is added. */
+    background: url(/images/icons/winControl/restore.png) no-repeat center;
+    background-size: 12px 12px;
+}
+
+.title-bar-controls button[aria-label=Restore]:before {
+    background: url(/images/icons/winControl/restore.png) no-repeat center;
+    background-size: 12px 12px;
+}
+
+.title-bar-controls button[aria-label=Close] {
+    background-color: #d04a37;
+    width: 45px
+}
+
+.title-bar-controls button[aria-label=Close]:before {
+    background: url(/images/icons/winControl/close.png) no-repeat center;
+    background-size: 10px 10px;
+}
+
+.title-bar-controls button[aria-label=Close]:hover {
+    filter: contrast(1.3)
+}
+
+.title-bar-controls button[aria-label=Close]:active,.title-bar-controls button[aria-label=Close]:hover {
+    background-image: linear-gradient(hsla(0,0%,100%,.3),hsla(0,0%,100%,.3) 45%,rgba(0,0,0,.1) 50%,rgba(0,0,0,.1) 75%,hsla(0,0%,100%,.5))
+}
+
+.title-bar-controls button[aria-label=Close]:active {
+    filter: contrast(1.3) brightness(.7)
+}
+
+.window .window-body {
+    margin: 0 6px 6px;
+    padding: 6px;
+    border: 1px solid rgba(0,0,0,.6);
+    background: #f0f0f0;
+    box-shadow: 0 0 1px .5px #fff;
+}
+
+.window {
+    box-shadow: 0 0 5px 1px rgba(0,0,0,.6);
+    border: 1px solid rgba(0,0,0,.6);
+}
+
+/* Taskbar icon + label alignment */
+.icon-text {
+    display: inline-flex;
+    align-items: center; /* vertically center image and text */
+    gap: 0.5rem; /* spacing between icon and label */
+}
+.icon-text .icon {
+    width: 1.6rem; /* match existing taskbar icon sizing */
+    height: 1.6rem;
+    display: block;
+    object-fit: contain;
+}
+
+@media (max-width: 600px) {
+    .icon-text .taskbar-label { display: none; }
+}
+
+.taskbar-label {
+    font-size: 0.75rem;
+        text-shadow: 
+    2px 2px 0.2rem #00000070, 
+    -2px -2px 0.2rem #00000070, 
+    2px -2px 0.2rem #00000070, 
+    -2px 2px 0.2rem #00000070;
+}
+
+.intro-top-right>.window-wrapper>.window>.window-body
+{
+    /* faded background: overlay a semi-transparent white gradient above the image
+         to reduce its visual prominence. Adjust the alpha (0.55) to change fade. */
+    background-image: linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), url('https://preview.redd.it/frutiger-aero-aesthetic-in-genshin-impact-v0-odmllnfdth2f1.png?width=640&crop=smart&auto=webp&s=040d97f127e6c2ad31105f421be59b675c59384d');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}
+
+.intro-bottom-left>.window-wrapper>.window>.window-body
+{
+    /* faded background: overlay a semi-transparent white gradient above the image
+       to reduce its visual prominence. Adjust the alpha (0.55) to change fade. */
+    background-image: linear-gradient(rgba(255,255,255,0.55), rgba(255,255,255,0.55)), url('https://media.licdn.com/dms/image/v2/D4E12AQGxNln4sKkPqw/article-cover_image-shrink_720_1280/B4EZXRm0VOGgAM-/0/1742978370834?e=2147483647&v=beta&t=9bqrAjryHh18QspmCmg-_FpAl33ddSvW_xZKKZfGFtY');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}

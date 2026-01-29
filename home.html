@@ -24,6 +24,7 @@
 <body class="has-scrollbar">
     <main>
         <section class="intro">
+        <canvas id="liquid-glass-canvas" width="100%" height="100%" ></canvas>
             <div class="intro-top-right" style="color: #F86BC7; position: absolute; top: 2rem; right: 0; width: 50%; height: 50%; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding: 2rem; box-sizing: border-box;">
                 <div class="window-wrapper no-padding" style="opacity: 1; z-index: 1; top: 2rem; right: 2rem; min-width: 360px;">
                     <div class="window colored glass">
@@ -66,6 +67,7 @@
                     </div>
                 </div>
             </div>
+            
             <div style="position: relative; width: 100%; height: 300px;"></div>
             <!-- taskbar backdrop lives inside .intro so we can emulate backdrop-filter when
                  the taskbar becomes fixed. JS will size/position this element. -->
@@ -143,7 +145,17 @@
                         <p class="taskbar-label">Stats & Progress</p>
                     </div>
                 </div>
-            </div>    
+            </div>
+
+
+            <div class="taskbar-icons">
+                <img src="images/icons/tray/0.png" alt="icon1" class="small-icon sounds">
+                <img src="images/icons/music.webp" alt="icon4" class="small-icon">
+                <img src="images/icons/home.png" alt="icon1" class="small-icon">
+                <img src="images/icons/book.png" alt="icon2" class="small-icon">
+                <img src="images/icons/stats.png" alt="icon3" class="small-icon">
+            </div>
+
             <div class="clock" id="clock"></div>
         </div>
     </div>

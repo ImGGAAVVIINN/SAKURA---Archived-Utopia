@@ -506,3 +506,369 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 })();
+
+
+
+
+
+
+
+
+/*
+      _             _            __   _            _    _                       _    __      __      _____  _____ _____  _____ _____ _______ 
+     | |           | |          / _| | |          | |  | |                     | |  /\ \    / /\    / ____|/ ____|  __ \|_   _|  __ \__   __|
+  ___| |_ __ _ _ __| |_    ___ | |_  | |_ __ _ ___| | _| |__   __ _ _ __       | | /  \ \  / /  \  | (___ | |    | |__) | | | | |__) | | |   
+ / __| __/ _` | '__| __|  / _ \|  _| | __/ _` / __| |/ / '_ \ / _` | '__|  _   | |/ /\ \ \/ / /\ \  \___ \| |    |  _  /  | | |  ___/  | |   
+ \__ \ || (_| | |  | |_  | (_) | |   | || (_| \__ \   <| |_) | (_| | |    | |__| / ____ \  / ____ \ ____) | |____| | \ \ _| |_| |      | |   
+ |___/\__\__,_|_|   \__|  \___/|_|    \__\__,_|___/_|\_\_.__/ \__,_|_|     \____/_/    \_\/_/    \_\_____/ \_____|_|  \_\_____|_|      |_|   
+                                                                                                                                             
+                                                                                                                                             
+*/
+// Minimal taskbar JS: clock updater and start menu toggle scoped to this taskbar.
+(function(){
+  // Clock
+  // Supports optional data attributes on the #clock element:
+  // - data-format="12" or "24" (default: 24)
+  // - data-seconds="true" to show seconds (default: false)
+  function updateTaskbarClock() {
+    // This function will try to use a cached timezone (window.__detectedClockTZ)
+    // or fetch it via IP geolocation once. It formats time as HH:MM AM/PM
+    // and date on the second line.
+    var el = document.getElementById('clock');
+    if (!el) return;
+
+    async function ensureTZ() {
+      if (el.dataset && el.dataset.timezone) return el.dataset.timezone;
+      if (window.__detectedClockTZ) return window.__detectedClockTZ;
+      try {
+        var controller = new AbortController();
+        var tid = setTimeout(function(){ controller.abort(); }, 2500);
+        var r = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+        clearTimeout(tid);
+        if (r.ok) {
+          var j = await r.json();
+          if (j && j.timezone) {
+            window.__detectedClockTZ = j.timezone;
+            return j.timezone;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      return undefined;
+    }
+
+    (async function() {
+      var now = new Date();
+      var tz = el.dataset && el.dataset.timezone ? el.dataset.timezone : await ensureTZ();
+      var timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+      var dateOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
+      try {
+        var timeFormatter = tz ? new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, timeOptions)) : new Intl.DateTimeFormat(undefined, timeOptions);
+        var dateFormatter = tz ? new Intl.DateTimeFormat(undefined, Object.assign({ timeZone: tz }, dateOptions)) : new Intl.DateTimeFormat(undefined, dateOptions);
+  var timeStr = timeFormatter.format(now);
+  // Ensure AM/PM is capitalized (e.g. 'am' -> 'AM', 'a.m.' -> 'AM')
+  timeStr = timeStr.replace(/(a\.?m\.?|p\.?m\.?)/ig, function(m){ return m.toUpperCase().replace(/\./g,''); });
+  var dateStr = dateFormatter.format(now);
+        el.innerHTML = "<div>" + timeStr + "</div><div>" + dateStr + "</div>";
+      } catch (err) {
+  var timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+  timeStr = timeStr.replace(/(a\.?m\.?|p\.?m\.?)/ig, function(m){ return m.toUpperCase().replace(/\./g,''); });
+  var dateStr = now.toLocaleDateString();
+        el.innerHTML = "<div>" + timeStr + "</div><div>" + dateStr + "</div>";
+      }
+    })();
+  }
+
+  setInterval(updateTaskbarClock, 1000);
+  document.addEventListener('DOMContentLoaded', function(){
+    updateTaskbarClock();
+    var start = document.getElementById('start-button');
+    var startMenu = document.getElementById('start-menu');
+    if (start && startMenu) {
+      // Click toggles start menu (existing behavior)
+      start.addEventListener('click', function(e){
+        e.stopPropagation();
+        startMenu.classList.toggle('show');
+      });
+
+      // Hover / focus behavior: swap the image src to a hover variant when available.
+      // Prefer explicit data-hover attribute; otherwise attempt a sensible filename replacement
+      // by swapping "startregular" -> "starthover" in the src.
+      (function(){
+        try {
+          var regularSrc = start.getAttribute('src') || '';
+          var hoverSrc = start.dataset && start.dataset.hover ? start.dataset.hover : regularSrc.replace('startregular', 'starthover');
+          // Store originals on dataset so other scripts can inspect them
+          start.dataset._regularSrc = regularSrc;
+          start.dataset._hoverSrc = hoverSrc;
+
+          var applyHover = function(){ if (hoverSrc) start.src = hoverSrc; };
+          var removeHover = function(){ if (regularSrc) start.src = regularSrc; };
+
+          // pointerover/pointerout covers mouse and stylus; also add focus/blur for keyboard
+          start.addEventListener('pointerover', applyHover);
+          start.addEventListener('pointerout', removeHover);
+          start.addEventListener('focus', applyHover);
+          start.addEventListener('blur', removeHover);
+
+          // For touch devices, a quick touchstart can show hover while pressed
+          start.addEventListener('touchstart', applyHover, { passive: true });
+          start.addEventListener('touchend', removeHover, { passive: true });
+        } catch (e) {
+          // defensive: do nothing on error
+        }
+      })();
+
+      // click elsewhere closes the start menu
+      document.addEventListener('click', function(){ startMenu.classList.remove('show'); });
+      startMenu.addEventListener('click', function(e){ e.stopPropagation(); });
+    }
+
+    // Progressive start-button shift when the taskbar is scrolled toward the top.
+    // This computes a small translateY value and sets the --start-shift CSS variable
+    // on the taskbar container. It's performant (rAF) and has a graceful default.
+    (function(){
+      try {
+        var taskbar = document.querySelector('.taskbar-container');
+        if (!taskbar) return;
+
+        var maxShift = 12; // maximum shift in px when taskbar reaches top
+        var threshold = 120; // start applying shift when taskbar top is within this px of viewport top
+        var ticking = false;
+
+        function updateShift() {
+          ticking = false;
+          var rect = taskbar.getBoundingClientRect();
+          var top = rect.top;
+          // t goes from 0 (no shift when taskbar far from top) to 1 (full shift when at/above top)
+          var t = (threshold - top) / threshold;
+          if (t < 0) t = 0;
+          if (t > 1) t = 1;
+          var shift = Math.round(t * maxShift);
+          taskbar.style.setProperty('--start-shift', shift + 'px');
+        }
+
+        function onScroll() {
+          if (!ticking) {
+            ticking = true;
+            requestAnimationFrame(updateShift);
+          }
+        }
+
+        // initialize and attach listeners
+        updateShift();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+      } catch (e) {
+        // defensive: don't break taskbar if anything goes wrong
+      }
+    })();
+  });
+})();
+
+
+  // Liquid Glass Effect
+  (function() {
+    try {
+      const canvas = document.getElementById("liquid-glass-canvas");
+      const gl = canvas.getContext("webgl");
+      const img = new Image();
+      img.src = 'images/screenshot.png';
+      img.crossOrigin = 'anonymous';
+
+      const setCanvasSize = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight-42;
+      };
+      setCanvasSize();
+
+      const vsSource = `
+        attribute vec2 position;
+        void main() {
+          gl_Position = vec4(position, 0.0, 1.0);
+        }
+      `;
+
+      const fsSource = `
+        precision mediump float;
+
+        uniform vec3 iResolution;
+        uniform float iTime;
+        uniform vec4 iMouse;
+        uniform sampler2D iChannel0;
+        uniform vec2 iImageResolution;
+
+        void mainImage(out vec4 fragColor, in vec2 fragCoord)
+        {
+          // Constant definitions
+          const float NUM_ZERO = 0.0;
+          const float NUM_ONE = 1.0;
+          const float NUM_HALF = 0.5;
+          const float NUM_TWO = 2.0;
+          const float POWER_EXPONENT = 6.0;
+          const float MASK_MULTIPLIER_1 = 80000.0;
+          const float MASK_MULTIPLIER_2 = 76000.0;
+          const float MASK_MULTIPLIER_3 = 88000.0;
+          const float LENS_MULTIPLIER = 5000.0;
+          const float MASK_STRENGTH_1 = 8.0;
+          const float MASK_STRENGTH_2 = 16.0;
+          const float MASK_STRENGTH_3 = 2.0;
+          const float MASK_THRESHOLD_1 = 0.95;
+          const float MASK_THRESHOLD_2 = 0.9;
+          const float MASK_THRESHOLD_3 = 1.5;
+          const float SAMPLE_RANGE = 4.0;
+          const float SAMPLE_OFFSET = 0.5;
+          const float GRADIENT_RANGE = 0.2;
+          const float GRADIENT_OFFSET = 0.1;
+          const float GRADIENT_EXTREME = -1000.0;
+          const float LIGHTING_INTENSITY = 0.3;
+
+          vec2 canvasUV = fragCoord / iResolution.xy;
+          float scale = max(iResolution.x / iImageResolution.x, iResolution.y / iImageResolution.y);
+          vec2 center = iResolution.xy * 0.5;
+          vec2 offset = fragCoord - center;
+          vec2 texUV = offset / (iImageResolution.xy * scale) + 0.5;
+
+          vec2 mouse = iMouse.xy;
+          if (length(mouse) < NUM_ONE) {
+            mouse = iResolution.xy / NUM_TWO;
+          }
+          vec2 m2 = (canvasUV - mouse / iResolution.xy) * 0.7;
+
+          float roundedBox = pow(abs(m2.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2.y), POWER_EXPONENT);
+          float rb1 = clamp((NUM_ONE - roundedBox * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
+          float rb2 = clamp((MASK_THRESHOLD_1 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
+            clamp(pow(MASK_THRESHOLD_2 - roundedBox * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
+          float rb3 = clamp((MASK_THRESHOLD_3 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
+            clamp(pow(NUM_ONE - roundedBox * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
+
+          fragColor = vec4(NUM_ZERO);
+          float transition = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
+
+          if (transition > NUM_ZERO) {
+            vec2 lens = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBox * LENS_MULTIPLIER) + NUM_HALF);
+            float total = NUM_ZERO;
+            for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
+              for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
+                vec2 offset = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
+                vec2 sampleCanvasUV = offset + lens;
+                vec2 sampleFragCoord = sampleCanvasUV * iResolution.xy;
+                vec2 sampleOffset = sampleFragCoord - center;
+                vec2 sampleTexUV = sampleOffset / (iImageResolution.xy * scale) + 0.5;
+                fragColor += texture2D(iChannel0, sampleTexUV);
+                total += NUM_ONE;
+              }
+            }
+            fragColor /= total;
+
+            float gradient = clamp((clamp(m2.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
+              clamp((clamp(-m2.y, GRADIENT_EXTREME, GRADIENT_RANGE) * rb3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
+            vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0); // light pink tint
+            vec4 lighting = clamp(fragColor * pinkTint + vec4(rb1) * gradient + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
+
+            fragColor = mix(texture2D(iChannel0, texUV), lighting, transition);
+          } else {
+            fragColor = texture2D(iChannel0, texUV);
+          }
+        }
+
+        void main() {
+          mainImage(gl_FragColor, gl_FragCoord.xy);
+        }
+      `;
+
+      const createShader = (type, source) => {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error("Shader error:", gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      };
+
+      const vs = createShader(gl.VERTEX_SHADER, vsSource);
+      const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
+      const program = gl.createProgram();
+
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      gl.useProgram(program);
+
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        gl.STATIC_DRAW
+      );
+
+      const position = gl.getAttribLocation(program, "position");
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+      const uniforms = {
+        resolution: gl.getUniformLocation(program, "iResolution"),
+        time: gl.getUniformLocation(program, "iTime"),
+        mouse: gl.getUniformLocation(program, "iMouse"),
+        texture: gl.getUniformLocation(program, "iChannel0"),
+        imageResolution: gl.getUniformLocation(program, "iImageResolution"),
+      };
+
+      let mouse = [canvas.width - 190, 180]; // bottom right
+
+      const texture = gl.createTexture();
+      const setupTexture = () => {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          img
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.uniform2f(uniforms.imageResolution, img.width, img.height);
+      };
+
+      if (img.complete) {
+        setupTexture();
+      } else {
+        img.onload = setupTexture;
+      }
+
+      // Rendering
+      const startTime = performance.now();
+      const render = () => {
+        const currentTime = (performance.now() - startTime) / 1000;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.uniform3f(uniforms.resolution, canvas.width, canvas.height, 1.0);
+        gl.uniform1f(uniforms.time, currentTime);
+        gl.uniform4f(uniforms.mouse, mouse[0], mouse[1], 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(uniforms.texture, 0);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+      };
+
+      render();
+    } catch (e) {
+      console.error("Liquid glass error:", e);
+    }
+  })();
+
