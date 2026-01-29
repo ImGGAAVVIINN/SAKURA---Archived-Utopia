@@ -697,8 +697,12 @@ document.addEventListener('DOMContentLoaded', function () {
         uniform float iTime;
         uniform vec4 iMouse;
         uniform sampler2D iChannel0;
-  uniform vec2 iImageResolution;
-  uniform float uEnabled;
+        uniform vec2 iImageResolution;
+        uniform float uEnabled;
+  uniform vec2 uCenterA;
+  uniform vec2 uCenterB;
+  // per-lens pixel radii for asymmetric width/height control (pixels)
+  uniform vec2 uRadiusB;
 
         void mainImage(out vec4 fragColor, in vec2 fragCoord)
         {
@@ -731,51 +735,94 @@ document.addEventListener('DOMContentLoaded', function () {
           vec2 offset = fragCoord - center;
           vec2 texUV = offset / (iImageResolution.xy * scale) + 0.5;
 
-          vec2 mouse = iMouse.xy;
-          if (length(mouse) < NUM_ONE) {
-            mouse = iResolution.xy / NUM_TWO;
-          }
-          vec2 m2 = (canvasUV - mouse / iResolution.xy) * 0.7;
+          // compute two lens masks (A = bottom-right by default, B = top-left)
+          vec2 ca = uCenterA / iResolution.xy;
+          vec2 cb = uCenterB / iResolution.xy;
 
-          float roundedBox = pow(abs(m2.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2.y), POWER_EXPONENT);
-          float rb1 = clamp((NUM_ONE - roundedBox * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
-          float rb2 = clamp((MASK_THRESHOLD_1 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
-            clamp(pow(MASK_THRESHOLD_2 - roundedBox * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
-          float rb3 = clamp((MASK_THRESHOLD_3 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
-            clamp(pow(NUM_ONE - roundedBox * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
+          // m2 for each lens (smaller core for both)
+          // keep lens A calculation as before (unchanged)
+          vec2 m2a = (canvasUV - ca) * 0.7;
+          // compute lens B using pixel-radius so we can have independent
+          // width/height (tall/narrow) without altering lens A.
+          vec2 relB = fragCoord - uCenterB; // pixel offset from center
+          // normalize by the pixel radius (uRadiusB) to get unit-space for mask
+          vec2 m2b = relB / uRadiusB;
 
-          fragColor = vec4(NUM_ZERO);
-          float transition = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
-          // global enable/disable (1.0 = on, 0.0 = off)
-          float eff = transition * uEnabled;
+          float roundedBoxA = pow(abs(m2a.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2a.y), POWER_EXPONENT);
+          float ra1 = clamp((NUM_ONE - roundedBoxA * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
+          float ra2 = clamp((MASK_THRESHOLD_1 - roundedBoxA * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
+            clamp(pow(MASK_THRESHOLD_2 - roundedBoxA * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
+          float ra3 = clamp((MASK_THRESHOLD_3 - roundedBoxA * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
+            clamp(pow(NUM_ONE - roundedBoxA * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
+          float transA = smoothstep(NUM_ZERO, NUM_ONE, ra1 + ra2);
 
-          // only run the expensive sampling when the effect is enabled
-          if (eff > NUM_ZERO) {
-            vec2 lens = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBox * LENS_MULTIPLIER) + NUM_HALF);
-            float total = NUM_ZERO;
-            for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
-              for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
-                vec2 offset = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
-                vec2 sampleCanvasUV = offset + lens;
-                vec2 sampleFragCoord = sampleCanvasUV * iResolution.xy;
-                vec2 sampleOffset = sampleFragCoord - center;
-                vec2 sampleTexUV = sampleOffset / (iImageResolution.xy * scale) + 0.5;
-                fragColor += texture2D(iChannel0, sampleTexUV);
-                total += NUM_ONE;
+          float roundedBoxB = pow(abs(m2b.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2b.y), POWER_EXPONENT);
+          float rb1 = clamp((NUM_ONE - roundedBoxB * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
+          float rb2 = clamp((MASK_THRESHOLD_1 - roundedBoxB * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
+            clamp(pow(MASK_THRESHOLD_2 - roundedBoxB * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
+          float rb3 = clamp((MASK_THRESHOLD_3 - roundedBoxB * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
+            clamp(pow(NUM_ONE - roundedBoxB * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
+          float transB = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
+
+          // base image
+          vec4 base = texture2D(iChannel0, texUV);
+
+          // apply effects only when enabled
+          float enabled = uEnabled;
+
+          vec4 result = base;
+
+          if (enabled > NUM_ZERO) {
+            // lens A sampling
+            if (transA > NUM_ZERO) {
+              vec2 lensA = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBoxA * LENS_MULTIPLIER) + NUM_HALF);
+              vec4 accumA = vec4(NUM_ZERO);
+              float totalA = NUM_ZERO;
+              for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
+                for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
+                  vec2 off = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
+                  vec2 sCanvasUV = off + lensA;
+                  vec2 sFrag = sCanvasUV * iResolution.xy;
+                  vec2 sOff = sFrag - center;
+                  vec2 sTex = sOff / (iImageResolution.xy * scale) + 0.5;
+                  accumA += texture2D(iChannel0, sTex);
+                  totalA += NUM_ONE;
+                }
               }
+              accumA /= totalA;
+              float gradA = clamp((clamp(m2a.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
+                clamp((clamp(-m2a.y, GRADIENT_EXTREME, GRADIENT_RANGE) * ra3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
+              vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0);
+              vec4 lightA = clamp(accumA * pinkTint + vec4(ra1) * gradA + vec4(ra2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
+              result = mix(result, lightA, transA);
             }
-            fragColor /= total;
 
-            float gradient = clamp((clamp(m2.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
-              clamp((clamp(-m2.y, GRADIENT_EXTREME, GRADIENT_RANGE) * rb3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
-            vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0); // light pink tint
-            vec4 lighting = clamp(fragColor * pinkTint + vec4(rb1) * gradient + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
-
-            // apply effect scaled by eff (will be 0 when disabled)
-            fragColor = mix(texture2D(iChannel0, texUV), lighting, eff);
-          } else {
-            fragColor = texture2D(iChannel0, texUV);
+            // lens B sampling
+            if (transB > NUM_ZERO) {
+              vec2 lensB = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBoxB * LENS_MULTIPLIER) + NUM_HALF);
+              vec4 accumB = vec4(NUM_ZERO);
+              float totalB = NUM_ZERO;
+              for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
+                for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
+                  vec2 off = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
+                  vec2 sCanvasUV = off + lensB;
+                  vec2 sFrag = sCanvasUV * iResolution.xy;
+                  vec2 sOff = sFrag - center;
+                  vec2 sTex = sOff / (iImageResolution.xy * scale) + 0.5;
+                  accumB += texture2D(iChannel0, sTex);
+                  totalB += NUM_ONE;
+                }
+              }
+              accumB /= totalB;
+              float gradB = clamp((clamp(m2b.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
+                clamp((clamp(-m2b.y, GRADIENT_EXTREME, GRADIENT_RANGE) * rb3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
+              vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0);
+              vec4 lightB = clamp(accumB * pinkTint + vec4(rb1) * gradB + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
+              result = mix(result, lightB, transB);
+            }
           }
+
+          fragColor = result;
         }
 
         void main() {
@@ -824,6 +871,9 @@ document.addEventListener('DOMContentLoaded', function () {
         texture: gl.getUniformLocation(program, "iChannel0"),
         imageResolution: gl.getUniformLocation(program, "iImageResolution"),
         enabled: gl.getUniformLocation(program, "uEnabled"),
+        centerA: gl.getUniformLocation(program, "uCenterA"),
+        centerB: gl.getUniformLocation(program, "uCenterB"),
+        radiusB: gl.getUniformLocation(program, "uRadiusB"),
       };
 
       let mouse = [canvas.width - 210, 200]; // bottom right
@@ -878,6 +928,23 @@ document.addEventListener('DOMContentLoaded', function () {
         gl.uniform3f(uniforms.resolution, canvas.width, canvas.height, 1.0);
         gl.uniform1f(uniforms.time, currentTime);
         gl.uniform4f(uniforms.mouse, mouse[0], mouse[1], 0, 0);
+        // update shader-controlled toggles and lens centers every frame
+        try {
+          gl.uniform1f(uniforms.enabled, glassEnabled);
+          // place one lens at the top-left and the other at the bottom-right
+          gl.uniform2f(uniforms.centerA, 1650.0, 200.0); // top-left (unchanged)
+
+          // centerB explicit settings — easy to tweak
+          const lensBSettings = {
+            x: 1650.0,
+            y: 282.0,
+            width: 5300.0,  // total width in pixels
+            height: 3300.0 // total height in pixels
+          };
+          gl.uniform2f(uniforms.centerB, lensBSettings.x, lensBSettings.y);
+          // shader expects radii (half-dimensions)
+          gl.uniform2f(uniforms.radiusB, lensBSettings.width * 0.5, lensBSettings.height * 0.5);
+        } catch (e) {}
 
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
