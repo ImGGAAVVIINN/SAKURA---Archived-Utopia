@@ -698,7 +698,8 @@ document.addEventListener('DOMContentLoaded', function () {
         uniform vec4 iMouse;
         uniform sampler2D iChannel0;
   uniform vec2 iImageResolution;
-  uniform float uEnabled;
+  uniform float uEnabledA;
+  uniform float uEnabledB;
   uniform vec2 uCenterA;
   uniform vec2 uCenterB;
   // per-lens size in pixels (width, height). These let the JS place
@@ -771,16 +772,32 @@ document.addEventListener('DOMContentLoaded', function () {
           float transB = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
 
           // base image
-          vec4 base = texture2D(iChannel0, texUV);
+          // outer shadow calculation: create a soft ring outside each rounded box
+          // Use a difference of smoothsteps to produce a soft ring between r0 and r1
+          // narrower smoothstep range -> thinner shadow ring
+          // narrower medium shadow: tighten ranges so the ring is less wide
+          float shadowA = clamp(smoothstep(1.03, 1.07, roundedBoxA) - smoothstep(1.07, 1.14, roundedBoxA), 0.0, 1.0);
+          float shadowB = clamp(smoothstep(1.03, 1.07, roundedBoxB) - smoothstep(1.07, 1.14, roundedBoxB), 0.0, 1.0);
+          // reduce shadow where lens interior is strong (avoid darkening center)
+          // and respect per-lens enable flags so a disabled lens produces no shadow
+          shadowA *= (1.0 - transA) * uEnabledA;
+          shadowB *= (1.0 - transB) * uEnabledB;
+          float shadowMask = clamp(shadowA + shadowB, 0.0, 1.0);
 
-          // apply effects only when enabled
-          float enabled = uEnabled;
+          vec4 base = texture2D(iChannel0, texUV);
+          // apply shadow as a subtle darkening of the base behind the lenses
+          if (shadowMask > 0.0) {
+            // medium strength shadow
+            float shadowStrength = 0.36; // moderate darkness
+            // soften the mask a bit to keep edges feathered
+            float soft = pow(shadowMask, 0.9);
+            base.rgb = mix(base.rgb, base.rgb * (1.0 - shadowStrength), soft);
+          }
 
           vec4 result = base;
 
-          if (enabled > NUM_ZERO) {
-            // lens A sampling
-            if (transA > NUM_ZERO) {
+            // lens A sampling (only when enabledA is on)
+            if (transA > NUM_ZERO && uEnabledA > 0.5) {
               vec2 lensA = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBoxA * LENS_MULTIPLIER) + NUM_HALF);
               vec4 accumA = vec4(NUM_ZERO);
               float totalA = NUM_ZERO;
@@ -803,8 +820,8 @@ document.addEventListener('DOMContentLoaded', function () {
               result = mix(result, lightA, transA);
             }
 
-            // lens B sampling
-            if (transB > NUM_ZERO) {
+            // lens B sampling (only when enabledB is on)
+            if (transB > NUM_ZERO && uEnabledB > 0.5) {
               vec2 lensB = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBoxB * LENS_MULTIPLIER) + NUM_HALF);
               vec4 accumB = vec4(NUM_ZERO);
               float totalB = NUM_ZERO;
@@ -826,7 +843,6 @@ document.addEventListener('DOMContentLoaded', function () {
               vec4 lightB = clamp(accumB * pinkTint + vec4(rb1) * gradB + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
               result = mix(result, lightB, transB);
             }
-          }
 
           fragColor = result;
         }
@@ -876,7 +892,8 @@ document.addEventListener('DOMContentLoaded', function () {
         mouse: gl.getUniformLocation(program, "iMouse"),
         texture: gl.getUniformLocation(program, "iChannel0"),
         imageResolution: gl.getUniformLocation(program, "iImageResolution"),
-        enabled: gl.getUniformLocation(program, "uEnabled"),
+        enabledA: gl.getUniformLocation(program, "uEnabledA"),
+        enabledB: gl.getUniformLocation(program, "uEnabledB"),
         centerA: gl.getUniformLocation(program, "uCenterA"),
         centerB: gl.getUniformLocation(program, "uCenterB"),
         sizeA: gl.getUniformLocation(program, "uSizeA"),
@@ -887,14 +904,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Keep canvas visible at all times. Toggle the glass effect (shader) via
       // the `uEnabled` uniform when the user clicks the music tray icon.
-      let glassEnabled = 1.0;
+      // per-lens enable flags: A = tall lens, B = other lens
+      let enabledA = 1.0;
+      let enabledB = 1.0;
       const musicIcon = document.querySelector('.small-icon.music');
       if (musicIcon) {
         musicIcon.style.cursor = 'pointer';
+        // Music now toggles the tall lens (A)
         musicIcon.addEventListener('click', () => {
-          glassEnabled = glassEnabled ? 0.0 : 1.0;
-          try { gl.uniform1f(uniforms.enabled, glassEnabled); } catch (e) { /* ignore until program ready */ }
-          musicIcon.classList.toggle('glass-off', glassEnabled === 0.0);
+          // toggle A; if turning A on, ensure B is turned off so only one shows
+          const newA = enabledA ? 0.0 : 1.0;
+          enabledA = newA;
+          if (newA === 1.0) {
+            // disable B
+            enabledB = 0.0;
+            try { gl.uniform1f(uniforms.enabledB, enabledB); } catch (e) {}
+            if (notificationIcon) notificationIcon.classList.toggle('glass-off', true);
+          }
+          try { gl.uniform1f(uniforms.enabledA, enabledA); } catch (e) { /* ignore until program ready */ }
+          musicIcon.classList.toggle('glass-off', enabledA === 0.0);
+        });
+      }
+
+      // notification icon toggles the other lens (B)
+      const notificationIcon = document.querySelector('.small-icon.notification');
+      if (notificationIcon) {
+        notificationIcon.style.cursor = 'pointer';
+        notificationIcon.addEventListener('click', () => {
+          // toggle B; if turning B on, ensure A is turned off so only one shows
+          const newB = enabledB ? 0.0 : 1.0;
+          enabledB = newB;
+          if (newB === 1.0) {
+            enabledA = 0.0;
+            try { gl.uniform1f(uniforms.enabledA, enabledA); } catch (e) {}
+            if (musicIcon) musicIcon.classList.toggle('glass-off', true);
+          }
+          try { gl.uniform1f(uniforms.enabledB, enabledB); } catch (e) { }
+          notificationIcon.classList.toggle('glass-off', enabledB === 0.0);
         });
       }
 
@@ -914,8 +960,8 @@ document.addEventListener('DOMContentLoaded', function () {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.uniform2f(uniforms.imageResolution, img.width, img.height);
-        // ensure effect starts enabled
-        try { gl.uniform1f(uniforms.enabled, 1.0); } catch (e) { }
+        // ensure both lenses start enabled
+        try { gl.uniform1f(uniforms.enabledA, 1.0); gl.uniform1f(uniforms.enabledB, 1.0); } catch (e) { }
       };
 
       if (img.complete) {
@@ -937,7 +983,9 @@ document.addEventListener('DOMContentLoaded', function () {
         gl.uniform4f(uniforms.mouse, mouse[0], mouse[1], 0, 0);
         // update shader-controlled toggles and lens centers every frame
         try {
-          gl.uniform1f(uniforms.enabled, glassEnabled);
+          // update per-lens enabled flags
+          gl.uniform1f(uniforms.enabledA, enabledA);
+          gl.uniform1f(uniforms.enabledB, enabledB);
           // place one lens at the top-left and the other at the bottom-right
           gl.uniform2f(uniforms.centerA, 1690, 160.0); // top-left
           gl.uniform2f(uniforms.centerB, 1690, 260);          // set per-lens sizes (width, height) in pixels. Change these values
