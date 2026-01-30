@@ -405,6 +405,14 @@ img {
     width: 1rem;
     height: 1rem;
     display: block;
+    margin-left: 0.2rem;
+}
+
+.notification {
+    width: 1.2rem;
+    height: 1.2rem;
+
+    display: block;
 }
 
 /* Sticky helper: when the taskbar reaches the top we add .taskbar-sticky */
@@ -961,7 +969,7 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
     filter: drop-shadow(0 0 0.2rem rgb(0, 0, 0));
 }
 
-.clock { margin-left: 8px; padding: 0 8px; font-weight: 600 }
+.clock {padding: 0 8px; font-weight: 600 }
 
 /* Small responsive tweak */
 @media (max-width: 600px) {

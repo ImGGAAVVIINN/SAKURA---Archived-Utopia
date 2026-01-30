@@ -697,12 +697,15 @@ document.addEventListener('DOMContentLoaded', function () {
         uniform float iTime;
         uniform vec4 iMouse;
         uniform sampler2D iChannel0;
-        uniform vec2 iImageResolution;
-        uniform float uEnabled;
+  uniform vec2 iImageResolution;
+  uniform float uEnabled;
   uniform vec2 uCenterA;
   uniform vec2 uCenterB;
-  // per-lens pixel radii for asymmetric width/height control (pixels)
-  uniform vec2 uRadiusB;
+  // per-lens size in pixels (width, height). These let the JS place
+  // rectangular/rounded lenses with independent width/height while
+  // preserving corner roundness.
+  uniform vec2 uSizeA;
+  uniform vec2 uSizeB;
 
         void mainImage(out vec4 fragColor, in vec2 fragCoord)
         {
@@ -712,12 +715,14 @@ document.addEventListener('DOMContentLoaded', function () {
           const float NUM_HALF = 0.5;
           const float NUM_TWO = 2.0;
           const float POWER_EXPONENT = 6.0;
-          const float MASK_MULTIPLIER_1 = 50000.0;
-          const float MASK_MULTIPLIER_2 = 47500.0;
-          const float MASK_MULTIPLIER_3 = 55000.0;
-          const float LENS_MULTIPLIER = 5000.0;
+          // Tuned multipliers for pixel-space normalized masks (not huge constants)
+          const float MASK_MULTIPLIER_1 = 1.0;
+          const float MASK_MULTIPLIER_2 = 0.9;
+          const float MASK_MULTIPLIER_3 = 1.2;
+          // Controls how strongly the lens pulls/refacts samples. Smaller => subtler
+          const float LENS_MULTIPLIER = 0.6;
           const float MASK_STRENGTH_1 = 8.0;
-          const float MASK_STRENGTH_2 = 16.0;
+          const float MASK_STRENGTH_2 = 12.0;
           const float MASK_STRENGTH_3 = 2.0;
           const float MASK_THRESHOLD_1 = 0.95;
           const float MASK_THRESHOLD_2 = 0.9;
@@ -735,20 +740,21 @@ document.addEventListener('DOMContentLoaded', function () {
           vec2 offset = fragCoord - center;
           vec2 texUV = offset / (iImageResolution.xy * scale) + 0.5;
 
-          // compute two lens masks (A = bottom-right by default, B = top-left)
-          vec2 ca = uCenterA / iResolution.xy;
-          vec2 cb = uCenterB / iResolution.xy;
+          // compute two lens masks using pixel-space coordinates so width/height
+          // are respected exactly and rounded corners are preserved.
+          vec2 ca_px = uCenterA; // pixel coordinates passed from JS
+          vec2 cb_px = uCenterB;
 
-          // m2 for each lens (smaller core for both)
-          // keep lens A calculation as before (unchanged)
-          vec2 m2a = (canvasUV - ca) * 0.7;
-          // compute lens B using pixel-radius so we can have independent
-          // width/height (tall/narrow) without altering lens A.
-          vec2 relB = fragCoord - uCenterB; // pixel offset from center
-          // normalize by the pixel radius (uRadiusB) to get unit-space for mask
-          vec2 m2b = relB / uRadiusB;
+          // half-size in pixels (avoid zero)
+          vec2 halfA = max(uSizeA * 0.5, vec2(1.0));
+          vec2 halfB = max(uSizeB * 0.5, vec2(1.0));
 
-          float roundedBoxA = pow(abs(m2a.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2a.y), POWER_EXPONENT);
+          // m2: relative position in units of half-size (so -1..1 maps to lens bounds)
+          vec2 m2a = (fragCoord - ca_px) / halfA;
+          vec2 m2b = (fragCoord - cb_px) / halfB;
+
+          // Use symmetric power distance for rounded rectangle; no extra aspect multiply
+          float roundedBoxA = pow(abs(m2a.x), POWER_EXPONENT) + pow(abs(m2a.y), POWER_EXPONENT);
           float ra1 = clamp((NUM_ONE - roundedBoxA * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
           float ra2 = clamp((MASK_THRESHOLD_1 - roundedBoxA * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
             clamp(pow(MASK_THRESHOLD_2 - roundedBoxA * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
@@ -756,7 +762,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clamp(pow(NUM_ONE - roundedBoxA * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
           float transA = smoothstep(NUM_ZERO, NUM_ONE, ra1 + ra2);
 
-          float roundedBoxB = pow(abs(m2b.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2b.y), POWER_EXPONENT);
+          float roundedBoxB = pow(abs(m2b.x), POWER_EXPONENT) + pow(abs(m2b.y), POWER_EXPONENT);
           float rb1 = clamp((NUM_ONE - roundedBoxB * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
           float rb2 = clamp((MASK_THRESHOLD_1 - roundedBoxB * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
             clamp(pow(MASK_THRESHOLD_2 - roundedBoxB * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
@@ -873,7 +879,8 @@ document.addEventListener('DOMContentLoaded', function () {
         enabled: gl.getUniformLocation(program, "uEnabled"),
         centerA: gl.getUniformLocation(program, "uCenterA"),
         centerB: gl.getUniformLocation(program, "uCenterB"),
-        radiusB: gl.getUniformLocation(program, "uRadiusB"),
+        sizeA: gl.getUniformLocation(program, "uSizeA"),
+        sizeB: gl.getUniformLocation(program, "uSizeB"),
       };
 
       let mouse = [canvas.width - 210, 200]; // bottom right
@@ -932,18 +939,14 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
           gl.uniform1f(uniforms.enabled, glassEnabled);
           // place one lens at the top-left and the other at the bottom-right
-          gl.uniform2f(uniforms.centerA, 1650.0, 200.0); // top-left (unchanged)
-
-          // centerB explicit settings — easy to tweak
-          const lensBSettings = {
-            x: 1650.0,
-            y: 282.0,
-            width: 5300.0,  // total width in pixels
-            height: 3300.0 // total height in pixels
-          };
-          gl.uniform2f(uniforms.centerB, lensBSettings.x, lensBSettings.y);
-          // shader expects radii (half-dimensions)
-          gl.uniform2f(uniforms.radiusB, lensBSettings.width * 0.5, lensBSettings.height * 0.5);
+          gl.uniform2f(uniforms.centerA, 1690, 160.0); // top-left
+          gl.uniform2f(uniforms.centerB, 1690, 260);          // set per-lens sizes (width, height) in pixels. Change these values
+          // to position/resize each lens independently. Keep sizes reasonable
+          // relative to the canvas to avoid aliasing.
+          // Here: lens A is twice as tall as it is wide (tall lens), lens B is
+          // a more standard wide lens.
+          gl.uniform2f(uniforms.sizeA, 300.0, 300.0); // width=120px, height=240px (2x tall)
+          gl.uniform2f(uniforms.sizeB, 300.0, 500.0); // width=220px, height=120px
         } catch (e) {}
 
         gl.activeTexture(gl.TEXTURE0);
