@@ -22,6 +22,11 @@
         </script>
 </head>
 <body class="has-scrollbar">
+    <!-- Welcome Splash Screen -->
+    <div id="welcome-splash" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url('images/welcomeBG.webp'); background-size: cover; background-position: center; z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <H1>DICKS!</H1>
+    </div>
+    
     <main>
 
                     <div class="notification flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%;">
@@ -32,12 +37,19 @@
                 <p>asdfasdgdgh  sdgf</p>
             </div>
 
-            <div class="music flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%;">
+            <div class="music flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%; font-family: 'Frutiger', sans-serif;">
                 <div class="liquid-glass--bend"></div>
                 <div class="liquid-glass--face"></div>
                 <div class="liquid-glass--edge"></div>
-                <h2>Interconnected Transportation hub</h2>
-                <div class="music-player-controls" style="margin: auto; top: 40%;">
+
+                <div style="background-color: rgba(50, 50, 50, 0.7); padding: 1rem; border-radius: 0.5rem;">
+                    <p style="color: rgb(176, 176, 176);">Last song</p>
+                    <h2 style="margin-top: 0.2rem; margin-bottom: 0.2rem; color:white;">Now Playing</h2>
+                    <p style="color:white;">Artist - Song Title</p>
+                    <p style="color: rgb(176, 176, 176);">Next song</p>
+                </div>
+                <img src="images/cd.png" style="width: 75%; height: 50%; margin-bottom: 1rem; margin: auto;top: 1rem;" alt="Album Art">
+                <div class="music-player-controls" style="margin: auto;top: 2rem;">
                   <button id="audioBack" title="Previous song" style="background: none; border: none; margin-right: 1rem;">
                     <img src="images/icons/music/music_player_back.png" alt="Music Player - Back Button">
                   </button>
@@ -143,7 +155,7 @@
         </div>
     </div>
 
-    <div class="colored glass taskbar-container window">
+    <div class="colored glass taskbar-container window" style="visibility: hidden;">
         <div class="title-bar" style="padding: 0;">
             <div class="start-button">
                 <img id="start-button" src="images/icons/startregular.png" alt="start">
@@ -260,5 +272,55 @@
     <script src="taskbar-embed.js"></script>
     <script src="taskbar-backdrop-embed.js"></script>
     <script src="home.js"></script>
+    
+    <script>
+        // Welcome splash screen logic
+        window.addEventListener('load', function() {
+            const welcomeSplash = document.getElementById('welcome-splash');
+            const welcomeAudio = new Audio('sounds/welcome.mp3');
+            const taskbar = document.querySelector('.taskbar-container');
+            
+            // Set audio volume to be quieter
+            welcomeAudio.volume = 0.3;
+            
+            // Prevent scrolling during welcome screen and hide scrollbar
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            
+            // Hide taskbar during welcome
+            if (taskbar) {
+                taskbar.style.visibility = 'hidden';
+            }
+            
+            // Play the welcome sound
+            welcomeAudio.play().catch(err => console.log('Audio play failed:', err));
+            
+            // When audio finishes, scroll to top and hide splash
+            welcomeAudio.addEventListener('ended', function() {
+                // Fade out the splash screen
+                welcomeSplash.style.transition = 'opacity 0.5s ease-out';
+                welcomeSplash.style.opacity = '0';
+                
+                setTimeout(function() {
+                    welcomeSplash.style.display = 'none';
+                    // Re-enable scrolling
+                    document.body.style.overflow = '';
+                    document.documentElement.style.overflow = '';
+                    // Ensure we're at the top
+                    window.scrollTo(0, 0);
+                    // Show taskbar after scrolling to top
+                    if (taskbar) {
+                        taskbar.style.visibility = 'visible';
+                    }
+                    
+                    // Play background music after welcome finishes
+                    const bgMusic = new Audio('sounds/songs/1. Xploshi - Rafflesia Channel.flac');
+                    bgMusic.volume = 0.1;
+                    bgMusic.loop = true;
+                    bgMusic.play().catch(err => console.log('Background music play failed:', err));
+                }, 500);
+            });
+        });
+    </script>
 </body>
 </html>

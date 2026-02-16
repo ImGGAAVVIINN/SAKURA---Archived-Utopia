@@ -528,12 +528,12 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
 }
 
 .notification.col-content-wrapper.liquid-glass.col-content-wrapper.liquid-glass {
-    max-height: 31rem;
+    max-height: 32rem;
     max-width: 20rem;
 }
 
 .music.col-content-wrapper.liquid-glass.col-content-wrapper.liquid-glass {
-    max-height: 24rem;
+    max-height: 28rem;
     max-width: 20rem;
 }
 
