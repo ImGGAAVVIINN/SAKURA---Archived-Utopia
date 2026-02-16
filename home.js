@@ -507,6 +507,332 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 })();
 
+// Flyout toggles for taskbar icons (notification & music)
+document.addEventListener('DOMContentLoaded', function () {
+    try {
+        const taskbar = document.querySelector('.taskbar-container');
+        const notificationIcon = document.querySelector('.small-icon.notification');
+        const musicIcon = document.querySelector('.small-icon.music');
+        const notificationFlyout = document.querySelector('.notification.flyout');
+        const musicFlyout = document.querySelector('.music.flyout');
+
+        function updateTaskbarHeightVar() {
+            if (!taskbar) return;
+            const h = taskbar.offsetHeight || 60;
+            document.documentElement.style.setProperty('--taskbar-height', h + 'px');
+        }
+
+        updateTaskbarHeightVar();
+        window.addEventListener('resize', updateTaskbarHeightVar);
+
+        // --- Follow taskbar: keep flyouts moving with the taskbar movement ---
+    // Store initial positions so we can move flyouts the same delta as the taskbar.
+    // Use `let` so we can recompute if viewport / taskbar changes (focus, resize, visibility)
+    let initialTaskbarTop = taskbar ? taskbar.getBoundingClientRect().top : 0;
+    const flyouts = [notificationFlyout, musicFlyout].filter(Boolean);
+    const initialFlyoutTops = new Map();
+
+    // Small helper to (re)compute the baseline top values for each flyout.
+    // We prefer the inline `style.top` (percent or px) so transforms used for
+    // hiding won't taint the baseline; otherwise fall back to bounding rect.
+    function recomputeInitialFlyoutPositions() {
+        initialTaskbarTop = taskbar ? taskbar.getBoundingClientRect().top : 0;
+        flyouts.forEach((el) => {
+            if (!el) return;
+            let topPx = undefined;
+            try {
+                const inlineTop = el.style && el.style.top ? el.style.top : '';
+                if (inlineTop && inlineTop.trim().endsWith('%')) {
+                    topPx = (parseFloat(inlineTop) / 100) * window.innerHeight;
+                } else if (inlineTop && inlineTop.trim().endsWith('px')) {
+                    topPx = parseFloat(inlineTop);
+                }
+            } catch (e) {
+                topPx = undefined;
+            }
+            if (typeof topPx !== 'number' || Number.isNaN(topPx)) {
+                topPx = el.getBoundingClientRect().top;
+            }
+            initialFlyoutTops.set(el, topPx);
+        });
+    }
+
+    // compute initial baseline now
+    recomputeInitialFlyoutPositions();
+
+    // Recompute baselines in situations where the viewport/taskbar may have changed
+    // (window resize, visibility/focus changes). This prevents drift when the
+    // user switches to another window and returns.
+    window.addEventListener('focus', recomputeInitialFlyoutPositions);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') recomputeInitialFlyoutPositions(); });
+    window.addEventListener('resize', recomputeInitialFlyoutPositions);
+
+        // initialize mode and hidden state based on current taskbar position
+        try {
+            const currentTaskbarTop = taskbar ? taskbar.getBoundingClientRect().top : initialTaskbarTop;
+            const taskbarAtTopInit = currentTaskbarTop <= 0;
+            flyouts.forEach((el) => {
+                if (taskbarAtTopInit) {
+                    el.classList.add('mode-top');
+                    el.classList.remove('mode-bottom');
+                } else {
+                    el.classList.add('mode-bottom');
+                    el.classList.remove('mode-top');
+                }
+                if (!el.classList.contains('flyout-hidden') && !el.classList.contains('flyout-visible')) {
+                    el.classList.add('flyout-hidden');
+                }
+            });
+        } catch (e) {}
+
+        function updateFlyoutsFollow() {
+            try {
+                const currentTaskbarTop = taskbar ? taskbar.getBoundingClientRect().top : initialTaskbarTop;
+                const delta = Math.round(currentTaskbarTop - initialTaskbarTop);
+                const taskbarAtTop = currentTaskbarTop <= 0;
+                flyouts.forEach((el) => {
+                    // Skip repositioning if this flyout is currently being re-shown
+                    if (el.dataset.reshowing) return;
+
+                    const initialTop = initialFlyoutTops.get(el) || 0;
+                    const newTop = initialTop + delta;
+                    // apply new top in px so the flyout moves with the taskbar
+                    el.style.top = newTop + 'px';
+
+                    // assign mode class on each flyout so CSS knows which animation to use
+                    if (taskbarAtTop) {
+                        el.classList.add('mode-top');
+                        el.classList.remove('mode-bottom');
+                    } else {
+                        el.classList.add('mode-bottom');
+                        el.classList.remove('mode-top');
+                    }
+
+                    // If the flyout is visible and its top is at/above the viewport top,
+                    // retract automatically, then re-show it top-down under the taskbar.
+                    // Only do this once per direction (reshownDir prevents same-edge re-triggering).
+                    const rect = el.getBoundingClientRect();
+                    if (el.classList.contains('flyout-visible') && rect.top <= 2
+                        && !el.dataset.reshowing && el.dataset.reshownDir !== 'top') {
+                        // 1. Switch to mode-top so the retract slides UP (off the top edge)
+                        el.classList.add('mode-top');
+                        el.classList.remove('mode-bottom');
+
+                        // 2. Retract — hide the flyout (mode-top + flyout-hidden = translateY(-120vh) = slides up)
+                        el.classList.remove('flyout-visible');
+                        el.classList.add('flyout-hidden');
+
+                        // 3. Mark as reshowing so the scroll handler doesn't interfere
+                        el.dataset.reshowing = 'true';
+
+                        // 4. After the retract animation finishes, re-show it top-down under the taskbar
+                        setTimeout(() => {
+                            try {
+                                const tb = document.querySelector('.taskbar-container');
+                                const tbH = tb ? (tb.offsetHeight || 60) : 60;
+                                const tbTop = tb ? tb.getBoundingClientRect().top : 0;
+                                const currentTaskbarTopNow = tb ? tb.getBoundingClientRect().top : initialTaskbarTop;
+                                const deltaNow = Math.round(currentTaskbarTopNow - initialTaskbarTop);
+                                const gap = 6;
+                                const topUnder = Math.round(tbTop + tbH + gap);
+
+                                // Position it just under the taskbar
+                                el.style.top = topUnder + 'px';
+
+                                // Update the initial baseline so the scroll handler's delta math
+                                // keeps this flyout at its new position instead of pushing it back up
+                                initialFlyoutTops.set(el, topUnder - deltaNow);
+
+                                // Mark that this flyout reshowed from the top edge
+                                // so we don't retrigger from the same edge on subsequent scroll frames
+                                el.dataset.reshownDir = 'top';
+
+                                // Animate top-down: mode-top is already set
+                                // flyout-hidden has translateY(-120vh), flyout-visible has translateY(0)
+                                // so removing hidden and adding visible will slide it down into view
+                                el.classList.remove('flyout-hidden');
+                                void el.offsetWidth; // force reflow
+                                el.classList.add('flyout-visible');
+                            } catch (e) {}
+                            // clean up the reshowing guard flag after the animation settles
+                            setTimeout(() => { try { delete el.dataset.reshowing; } catch (e) {} }, 500);
+                        }, 450);
+                    }
+
+                    // MIRROR: If the flyout is visible and its bottom is at/below the viewport bottom,
+                    // retract downward, then re-show it bottom-up above the taskbar.
+                    // Only do this once per direction (reshownDir prevents same-edge re-triggering).
+                    if (el.classList.contains('flyout-visible') && rect.bottom >= window.innerHeight - 2
+                        && !el.dataset.reshowing && el.dataset.reshownDir !== 'bottom') {
+                        // 1. Switch to mode-bottom so the retract slides DOWN (off the bottom edge)
+                        el.classList.add('mode-bottom');
+                        el.classList.remove('mode-top');
+
+                        // 2. Retract — hide the flyout (mode-bottom + flyout-hidden = translateY(120vh) = slides down)
+                        el.classList.remove('flyout-visible');
+                        el.classList.add('flyout-hidden');
+
+                        // 3. Mark as reshowing so the scroll handler doesn't interfere
+                        el.dataset.reshowing = 'true';
+
+                        // 4. After the retract animation finishes, re-show it bottom-up above the taskbar
+                        setTimeout(() => {
+                            try {
+                                const tb = document.querySelector('.taskbar-container');
+                                const tbH = tb ? (tb.offsetHeight || 60) : 60;
+                                const tbRect = tb ? tb.getBoundingClientRect() : { top: window.innerHeight - 60 };
+                                const currentTaskbarTopNow = tb ? tb.getBoundingClientRect().top : initialTaskbarTop;
+                                const deltaNow = Math.round(currentTaskbarTopNow - initialTaskbarTop);
+                                const gap = 6;
+                                // Position the flyout's bottom edge just above the taskbar's top
+                                const finalTop = Math.round(tbRect.top - el.offsetHeight - gap);
+
+                                el.style.top = finalTop + 'px';
+
+                                // Update the initial baseline so the scroll handler's delta math
+                                // keeps this flyout at its new position instead of pushing it back down
+                                initialFlyoutTops.set(el, finalTop - deltaNow);
+
+                                // Mark that this flyout reshowed from the bottom edge
+                                el.dataset.reshownDir = 'bottom';
+
+                                // Animate bottom-up: mode-bottom is already set
+                                // flyout-hidden has translateY(120vh), flyout-visible has translateY(0)
+                                // so removing hidden and adding visible will slide it up into view
+                                el.classList.remove('flyout-hidden');
+                                void el.offsetWidth; // force reflow
+                                el.classList.add('flyout-visible');
+                            } catch (e) {}
+                            // clean up the reshowing guard flag after the animation settles
+                            setTimeout(() => { try { delete el.dataset.reshowing; } catch (e) {} }, 500);
+                        }, 450);
+                    }
+                });
+            } catch (e) {
+                // don't break if anything goes wrong
+                // console.warn('updateFlyoutsFollow error', e);
+            }
+        }
+
+        // run initially and on scroll/resize so flyouts track the taskbar
+        updateFlyoutsFollow();
+        window.addEventListener('scroll', updateFlyoutsFollow, { passive: true });
+        window.addEventListener('resize', updateFlyoutsFollow);
+
+        function closeAllFlyouts() {
+            [notificationFlyout, musicFlyout].forEach((el) => {
+                if (!el) return;
+                el.classList.remove('flyout-visible');
+                el.classList.add('flyout-hidden');
+                try { delete el.dataset.retracted; } catch (e) {}
+                try { delete el.dataset.reshownDir; } catch (e) {}
+                try { delete el.dataset.reshowing; } catch (e) {}
+            });
+            // update aria states
+            if (notificationIcon) notificationIcon.setAttribute('aria-pressed', 'false');
+            if (musicIcon) musicIcon.setAttribute('aria-pressed', 'false');
+        }
+
+        function toggleFlyout(flyoutEl, iconEl) {
+            if (!flyoutEl) return;
+            const isVisible = flyoutEl.classList.contains('flyout-visible');
+            // Check if this flyout was retracted BEFORE we close all flyouts (which clears the marker)
+            const wasRetracted = flyoutEl && flyoutEl.dataset && flyoutEl.dataset.retracted === 'true';
+            // close any other open flyouts first
+            closeAllFlyouts();
+            if (!isVisible) {
+                // Compute taskbar position and choose animation mode accordingly.
+                const taskbarEl = document.querySelector('.taskbar-container');
+                const taskbarRect = taskbarEl ? taskbarEl.getBoundingClientRect() : { top: Infinity, height: 60 };
+                const taskbarHeight = taskbarEl ? (taskbarEl.offsetHeight || 60) : 60;
+                const taskbarAtTop = taskbarRect.top <= 0;
+
+                // Determine this flyout's current top (in px) and height (relative to viewport).
+                // Prefer inline `style.top` (often set as a percentage in the markup) so
+                // we can compute the top ignoring the current transform used for hiding.
+                let topPx;
+                try {
+                    const inlineTop = flyoutEl.style && flyoutEl.style.top ? flyoutEl.style.top : '';
+                    if (inlineTop && inlineTop.trim().endsWith('%')) {
+                        topPx = (parseFloat(inlineTop) / 100) * window.innerHeight;
+                    } else if (inlineTop && inlineTop.trim().endsWith('px')) {
+                        topPx = parseFloat(inlineTop);
+                    } else {
+                        // fallback to computed bounding rect (may include transform, but it's safe)
+                        topPx = flyoutEl.getBoundingClientRect().top;
+                    }
+                } catch (e) {
+                    topPx = flyoutEl.getBoundingClientRect().top;
+                }
+                if (taskbarAtTop) {
+                    // Mode: taskbar at top -> flyout should appear below the taskbar and animate top-down
+                    flyoutEl.classList.add('mode-top');
+                    flyoutEl.classList.remove('mode-bottom');
+                    const gap = 6; // px gap under taskbar
+                    const topUnder = Math.round(taskbarHeight + gap);
+                    flyoutEl.style.top = topUnder + 'px';
+                    // Show it (CSS animates from above -> translateY(0))
+                    flyoutEl.classList.remove('flyout-hidden');
+                    void flyoutEl.offsetWidth;
+                    flyoutEl.classList.add('flyout-visible');
+                } else if (wasRetracted) {
+                    // If this flyout was retracted by touching the top, force top-down
+                    // behavior and show it under the current taskbar position (even if not fixed).
+                    flyoutEl.classList.add('mode-top');
+                    flyoutEl.classList.remove('mode-bottom');
+                    const gap = 6;
+                    // position under the taskbar's current viewport position
+                    const topUnder = Math.round((taskbarRect.top || 0) + taskbarHeight + gap);
+                    flyoutEl.style.top = topUnder + 'px';
+                    // start slightly above final position so it animates down
+                    flyoutEl.style.transform = 'translateY(-20px)';
+                    flyoutEl.classList.remove('flyout-hidden');
+                    void flyoutEl.offsetWidth;
+                    flyoutEl.classList.add('flyout-visible');
+                    // clear inline transform so CSS animates to 0
+                    requestAnimationFrame(() => { try { flyoutEl.style.transform = ''; } catch (e) {} });
+                    delete flyoutEl.dataset.retracted;
+                } else {
+                    // Mode: taskbar not at top -> flyout should appear above the taskbar and animate bottom-up
+                    flyoutEl.classList.add('mode-bottom');
+                    flyoutEl.classList.remove('mode-top');
+                    const baseline = window.innerHeight - taskbarHeight - 6; // 6px gap above taskbar
+                    const finalTop = Math.round(baseline - flyoutEl.offsetHeight);
+                    flyoutEl.style.top = finalTop + 'px';
+                    // Show it (CSS animates from below -> translateY(0))
+                    flyoutEl.classList.remove('flyout-hidden');
+                    void flyoutEl.offsetWidth;
+                    flyoutEl.classList.add('flyout-visible');
+                }
+                if (iconEl) iconEl.setAttribute('aria-pressed', 'true');
+            }
+        }
+
+        // make icon images keyboard accessible and wire up events
+        [[notificationIcon, notificationFlyout], [musicIcon, musicFlyout]].forEach(([icon, flyout]) => {
+            if (!icon) return;
+            try {
+                icon.setAttribute('role', 'button');
+                if (!icon.hasAttribute('tabindex')) icon.setAttribute('tabindex', '0');
+                icon.setAttribute('aria-pressed', 'false');
+                icon.addEventListener('click', function (e) { e.stopPropagation(); toggleFlyout(flyout, icon); });
+                icon.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFlyout(flyout, icon); } });
+            } catch (e) { /* ignore */ }
+        });
+
+        // prevent clicks inside flyouts from closing them
+        [notificationFlyout, musicFlyout].forEach((el) => { if (el) el.addEventListener('click', (e) => e.stopPropagation()); });
+
+        // clicking anywhere else closes flyouts
+        document.addEventListener('click', closeAllFlyouts);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAllFlyouts(); });
+
+    } catch (err) {
+        // defensive: don't break other scripts
+        console.warn('flyout toggle init error', err);
+    }
+});
+
 
 
 
@@ -667,347 +993,4 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 })();
 
-
-  // Liquid Glass Effect
-  (function() {
-    try {
-      const canvas = document.getElementById("liquid-glass-canvas");
-      const gl = canvas.getContext("webgl");
-      const img = new Image();
-      img.src = 'images/screenshot.png';
-      img.crossOrigin = 'anonymous';
-
-      const setCanvasSize = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight-42;
-      };
-      setCanvasSize();
-
-      const vsSource = `
-        attribute vec2 position;
-        void main() {
-          gl_Position = vec4(position, 0.0, 1.0);
-        }
-      `;
-
-      const fsSource = `
-        precision mediump float;
-
-        uniform vec3 iResolution;
-        uniform float iTime;
-        uniform vec4 iMouse;
-        uniform sampler2D iChannel0;
-  uniform vec2 iImageResolution;
-  uniform float uEnabledA;
-  uniform float uEnabledB;
-  uniform vec2 uCenterA;
-  uniform vec2 uCenterB;
-  // per-lens size in pixels (width, height). These let the JS place
-  // rectangular/rounded lenses with independent width/height while
-  // preserving corner roundness.
-  uniform vec2 uSizeA;
-  uniform vec2 uSizeB;
-
-        void mainImage(out vec4 fragColor, in vec2 fragCoord)
-        {
-          // Constant definitions
-          const float NUM_ZERO = 0.0;
-          const float NUM_ONE = 1.0;
-          const float NUM_HALF = 0.5;
-          const float NUM_TWO = 2.0;
-          const float POWER_EXPONENT = 6.0;
-          // Tuned multipliers for pixel-space normalized masks (not huge constants)
-          const float MASK_MULTIPLIER_1 = 1.0;
-          const float MASK_MULTIPLIER_2 = 0.9;
-          const float MASK_MULTIPLIER_3 = 1.2;
-          // Controls how strongly the lens pulls/refacts samples. Smaller => subtler
-          const float LENS_MULTIPLIER = 0.6;
-          const float MASK_STRENGTH_1 = 8.0;
-          const float MASK_STRENGTH_2 = 12.0;
-          const float MASK_STRENGTH_3 = 2.0;
-          const float MASK_THRESHOLD_1 = 0.95;
-          const float MASK_THRESHOLD_2 = 0.9;
-          const float MASK_THRESHOLD_3 = 1.5;
-          const float SAMPLE_RANGE = 4.0;
-          const float SAMPLE_OFFSET = 1.0;
-          const float GRADIENT_RANGE = 0.2;
-          const float GRADIENT_OFFSET = 0.1;
-          const float GRADIENT_EXTREME = -1000.0;
-          const float LIGHTING_INTENSITY = 0.3;
-
-          vec2 canvasUV = fragCoord / iResolution.xy;
-          float scale = max(iResolution.x / iImageResolution.x, iResolution.y / iImageResolution.y);
-          vec2 center = iResolution.xy * 0.5;
-          vec2 offset = fragCoord - center;
-          vec2 texUV = offset / (iImageResolution.xy * scale) + 0.5;
-
-          // compute two lens masks using pixel-space coordinates so width/height
-          // are respected exactly and rounded corners are preserved.
-          vec2 ca_px = uCenterA; // pixel coordinates passed from JS
-          vec2 cb_px = uCenterB;
-
-          // half-size in pixels (avoid zero)
-          vec2 halfA = max(uSizeA * 0.5, vec2(1.0));
-          vec2 halfB = max(uSizeB * 0.5, vec2(1.0));
-
-          // m2: relative position in units of half-size (so -1..1 maps to lens bounds)
-          vec2 m2a = (fragCoord - ca_px) / halfA;
-          vec2 m2b = (fragCoord - cb_px) / halfB;
-
-          // Use symmetric power distance for rounded rectangle; no extra aspect multiply
-          float roundedBoxA = pow(abs(m2a.x), POWER_EXPONENT) + pow(abs(m2a.y), POWER_EXPONENT);
-          float ra1 = clamp((NUM_ONE - roundedBoxA * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
-          float ra2 = clamp((MASK_THRESHOLD_1 - roundedBoxA * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
-            clamp(pow(MASK_THRESHOLD_2 - roundedBoxA * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
-          float ra3 = clamp((MASK_THRESHOLD_3 - roundedBoxA * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
-            clamp(pow(NUM_ONE - roundedBoxA * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
-          float transA = smoothstep(NUM_ZERO, NUM_ONE, ra1 + ra2);
-
-          float roundedBoxB = pow(abs(m2b.x), POWER_EXPONENT) + pow(abs(m2b.y), POWER_EXPONENT);
-          float rb1 = clamp((NUM_ONE - roundedBoxB * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
-          float rb2 = clamp((MASK_THRESHOLD_1 - roundedBoxB * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
-            clamp(pow(MASK_THRESHOLD_2 - roundedBoxB * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
-          float rb3 = clamp((MASK_THRESHOLD_3 - roundedBoxB * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
-            clamp(pow(NUM_ONE - roundedBoxB * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
-          float transB = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
-
-          // base image
-          // outer shadow calculation: create a soft ring outside each rounded box
-          // Use a difference of smoothsteps to produce a soft ring between r0 and r1
-          // narrower smoothstep range -> thinner shadow ring
-          // narrower medium shadow: tighten ranges so the ring is less wide
-          float shadowA = clamp(smoothstep(1.03, 1.07, roundedBoxA) - smoothstep(1.07, 1.14, roundedBoxA), 0.0, 1.0);
-          float shadowB = clamp(smoothstep(1.03, 1.07, roundedBoxB) - smoothstep(1.07, 1.14, roundedBoxB), 0.0, 1.0);
-          // reduce shadow where lens interior is strong (avoid darkening center)
-          // and respect per-lens enable flags so a disabled lens produces no shadow
-          shadowA *= (1.0 - transA) * uEnabledA;
-          shadowB *= (1.0 - transB) * uEnabledB;
-          float shadowMask = clamp(shadowA + shadowB, 0.0, 1.0);
-
-          vec4 base = texture2D(iChannel0, texUV);
-          // apply shadow as a subtle darkening of the base behind the lenses
-          if (shadowMask > 0.0) {
-            // medium strength shadow
-            float shadowStrength = 0.36; // moderate darkness
-            // soften the mask a bit to keep edges feathered
-            float soft = pow(shadowMask, 0.9);
-            base.rgb = mix(base.rgb, base.rgb * (1.0 - shadowStrength), soft);
-          }
-
-          vec4 result = base;
-
-            // lens A sampling (only when enabledA is on)
-            if (transA > NUM_ZERO && uEnabledA > 0.5) {
-              vec2 lensA = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBoxA * LENS_MULTIPLIER) + NUM_HALF);
-              vec4 accumA = vec4(NUM_ZERO);
-              float totalA = NUM_ZERO;
-              for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
-                for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
-                  vec2 off = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
-                  vec2 sCanvasUV = off + lensA;
-                  vec2 sFrag = sCanvasUV * iResolution.xy;
-                  vec2 sOff = sFrag - center;
-                  vec2 sTex = sOff / (iImageResolution.xy * scale) + 0.5;
-                  accumA += texture2D(iChannel0, sTex);
-                  totalA += NUM_ONE;
-                }
-              }
-              accumA /= totalA;
-              float gradA = clamp((clamp(m2a.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
-                clamp((clamp(-m2a.y, GRADIENT_EXTREME, GRADIENT_RANGE) * ra3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
-              vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0);
-              vec4 lightA = clamp(accumA * pinkTint + vec4(ra1) * gradA + vec4(ra2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
-              result = mix(result, lightA, transA);
-            }
-
-            // lens B sampling (only when enabledB is on)
-            if (transB > NUM_ZERO && uEnabledB > 0.5) {
-              vec2 lensB = ((canvasUV - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBoxB * LENS_MULTIPLIER) + NUM_HALF);
-              vec4 accumB = vec4(NUM_ZERO);
-              float totalB = NUM_ZERO;
-              for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
-                for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
-                  vec2 off = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
-                  vec2 sCanvasUV = off + lensB;
-                  vec2 sFrag = sCanvasUV * iResolution.xy;
-                  vec2 sOff = sFrag - center;
-                  vec2 sTex = sOff / (iImageResolution.xy * scale) + 0.5;
-                  accumB += texture2D(iChannel0, sTex);
-                  totalB += NUM_ONE;
-                }
-              }
-              accumB /= totalB;
-              float gradB = clamp((clamp(m2b.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
-                clamp((clamp(-m2b.y, GRADIENT_EXTREME, GRADIENT_RANGE) * rb3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
-              vec4 pinkTint = vec4(1.0, 0.8, 0.9, 1.0);
-              vec4 lightB = clamp(accumB * pinkTint + vec4(rb1) * gradB + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
-              result = mix(result, lightB, transB);
-            }
-
-          fragColor = result;
-        }
-
-        void main() {
-          mainImage(gl_FragColor, gl_FragCoord.xy);
-        }
-      `;
-
-      const createShader = (type, source) => {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-          console.error("Shader error:", gl.getShaderInfoLog(shader));
-          gl.deleteShader(shader);
-          return null;
-        }
-        return shader;
-      };
-
-      const vs = createShader(gl.VERTEX_SHADER, vsSource);
-      const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
-      const program = gl.createProgram();
-
-      gl.attachShader(program, vs);
-      gl.attachShader(program, fs);
-      gl.linkProgram(program);
-      gl.useProgram(program);
-
-      const buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-        gl.STATIC_DRAW
-      );
-
-      const position = gl.getAttribLocation(program, "position");
-      gl.enableVertexAttribArray(position);
-      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-
-      const uniforms = {
-        resolution: gl.getUniformLocation(program, "iResolution"),
-        time: gl.getUniformLocation(program, "iTime"),
-        mouse: gl.getUniformLocation(program, "iMouse"),
-        texture: gl.getUniformLocation(program, "iChannel0"),
-        imageResolution: gl.getUniformLocation(program, "iImageResolution"),
-        enabledA: gl.getUniformLocation(program, "uEnabledA"),
-        enabledB: gl.getUniformLocation(program, "uEnabledB"),
-        centerA: gl.getUniformLocation(program, "uCenterA"),
-        centerB: gl.getUniformLocation(program, "uCenterB"),
-        sizeA: gl.getUniformLocation(program, "uSizeA"),
-        sizeB: gl.getUniformLocation(program, "uSizeB"),
-      };
-
-      let mouse = [canvas.width - 210, 200]; // bottom right
-
-      // Keep canvas visible at all times. Toggle the glass effect (shader) via
-      // the `uEnabled` uniform when the user clicks the music tray icon.
-      // per-lens enable flags: A = tall lens, B = other lens
-      let enabledA = 1.0;
-      let enabledB = 1.0;
-      const musicIcon = document.querySelector('.small-icon.music');
-      if (musicIcon) {
-        musicIcon.style.cursor = 'pointer';
-        // Music now toggles the tall lens (A)
-        musicIcon.addEventListener('click', () => {
-          // toggle A; if turning A on, ensure B is turned off so only one shows
-          const newA = enabledA ? 0.0 : 1.0;
-          enabledA = newA;
-          if (newA === 1.0) {
-            // disable B
-            enabledB = 0.0;
-            try { gl.uniform1f(uniforms.enabledB, enabledB); } catch (e) {}
-            if (notificationIcon) notificationIcon.classList.toggle('glass-off', true);
-          }
-          try { gl.uniform1f(uniforms.enabledA, enabledA); } catch (e) { /* ignore until program ready */ }
-          musicIcon.classList.toggle('glass-off', enabledA === 0.0);
-        });
-      }
-
-      // notification icon toggles the other lens (B)
-      const notificationIcon = document.querySelector('.small-icon.notification');
-      if (notificationIcon) {
-        notificationIcon.style.cursor = 'pointer';
-        notificationIcon.addEventListener('click', () => {
-          // toggle B; if turning B on, ensure A is turned off so only one shows
-          const newB = enabledB ? 0.0 : 1.0;
-          enabledB = newB;
-          if (newB === 1.0) {
-            enabledA = 0.0;
-            try { gl.uniform1f(uniforms.enabledA, enabledA); } catch (e) {}
-            if (musicIcon) musicIcon.classList.toggle('glass-off', true);
-          }
-          try { gl.uniform1f(uniforms.enabledB, enabledB); } catch (e) { }
-          notificationIcon.classList.toggle('glass-off', enabledB === 0.0);
-        });
-      }
-
-      const texture = gl.createTexture();
-      const setupTexture = () => {
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          img
-        );
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.uniform2f(uniforms.imageResolution, img.width, img.height);
-        // ensure both lenses start enabled
-        try { gl.uniform1f(uniforms.enabledA, 1.0); gl.uniform1f(uniforms.enabledB, 1.0); } catch (e) { }
-      };
-
-      if (img.complete) {
-        setupTexture();
-      } else {
-        img.onload = setupTexture;
-      }
-
-      // Rendering
-      const startTime = performance.now();
-      const render = () => {
-        const currentTime = (performance.now() - startTime) / 1000;
-
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.uniform3f(uniforms.resolution, canvas.width, canvas.height, 1.0);
-        gl.uniform1f(uniforms.time, currentTime);
-        gl.uniform4f(uniforms.mouse, mouse[0], mouse[1], 0, 0);
-        // update shader-controlled toggles and lens centers every frame
-        try {
-          // update per-lens enabled flags
-          gl.uniform1f(uniforms.enabledA, enabledA);
-          gl.uniform1f(uniforms.enabledB, enabledB);
-          // place one lens at the top-left and the other at the bottom-right
-          gl.uniform2f(uniforms.centerA, 1690, 160.0); // top-left
-          gl.uniform2f(uniforms.centerB, 1690, 260);          // set per-lens sizes (width, height) in pixels. Change these values
-          // to position/resize each lens independently. Keep sizes reasonable
-          // relative to the canvas to avoid aliasing.
-          // Here: lens A is twice as tall as it is wide (tall lens), lens B is
-          // a more standard wide lens.
-          gl.uniform2f(uniforms.sizeA, 300.0, 300.0); // width=120px, height=240px (2x tall)
-          gl.uniform2f(uniforms.sizeB, 300.0, 500.0); // width=220px, height=120px
-        } catch (e) {}
-
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.uniform1i(uniforms.texture, 0);
-
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        requestAnimationFrame(render);
-      };
-
-      render();
-    } catch (e) {
-      console.error("Liquid glass error:", e);
-    }
-  })();
 

@@ -407,6 +407,52 @@ img {
     display: block;
 }
 
+/* Ensure icons are above most content so they're clickable */
+.taskbar-icons { position: relative; z-index: 10001; }
+
+/* ===== Flyout (notification / music) slide-up behavior ===== */
+.flyout {
+    position: fixed; /* fixed so it can be placed relative to the viewport */
+    /* allow inline left/top in the markup to determine horizontal/vertical placement */
+    transition: transform 420ms cubic-bezier(.2,.9,.2,1), opacity 260ms ease;
+    opacity: 0;
+    pointer-events: none; /* block interactions when hidden */
+    width: min(420px, 90%);
+    max-width: 480px;
+    box-sizing: border-box;
+    z-index: 9997; /* place behind taskbar (taskbar uses 9999) but above page content */
+}
+
+/* Mode: taskbar at top -> flyout comes from above and lands below the taskbar */
+.flyout.mode-top.flyout-hidden {
+    transform: translateY(-120vh);
+}
+.flyout.mode-top.flyout-visible {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Mode: taskbar not at top -> flyout comes from below and lands above the taskbar */
+.flyout.mode-bottom.flyout-hidden {
+    transform: translateY(120vh);
+}
+.flyout.mode-bottom.flyout-visible {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Slight elevation shadow when visible so it reads behind the glassy taskbar */
+.flyout .liquid-glass--face {
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .flyout { transition: none; }
+}
+
 /* Sticky helper: when the taskbar reaches the top we add .taskbar-sticky */
 .taskbar-sticky {
     position: fixed !important;
@@ -479,6 +525,68 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
     right: 0 !important;
     z-index: 9999 !important;
     box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+.notification.col-content-wrapper.liquid-glass.col-content-wrapper.liquid-glass {
+    max-height: 31rem;
+    max-width: 20rem;
+}
+
+.music.col-content-wrapper.liquid-glass.col-content-wrapper.liquid-glass {
+    max-height: 24rem;
+    max-width: 20rem;
+}
+
+/* Custom tweaks for flyout glass: less blur, stronger sakurapink tint,
+   and disable the SVG displacement "warping" when the flyout becomes
+   small. We scope these changes strictly to the flyout + col-content-wrapper
+   + liquid-glass combination so other glass elements keep their original look. */
+.flyout.col-content-wrapper.liquid-glass {
+    /* allow container queries so we can detect the element's own size */
+    container-type: inline-size;
+    container-name: notif;
+}
+
+.flyout.col-content-wrapper.liquid-glass .liquid-glass--bend {
+    /* reduce the blur compared to the global 12px */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    /* keep the svg displacement by default so larger panels can still show
+       the subtle warping; we'll turn it off for small sizes below */
+    filter: url(#glass-blur);
+}
+
+.flyout.col-content-wrapper.liquid-glass .liquid-glass--face {
+    /* stronger sakurapink tint for the flyout card */
+    background: rgba(255, 131, 164, 0.36); /* sakura pink, slightly opaque */
+}
+
+/* When the flyout is small, remove the SVG displacement map (warping)
+   so the glass reads clearly. This uses Container Queries (modern browsers).
+   As a progressive fallback we also include a viewport-based media query. */
+@container notif (max-width: 12rem) {
+    .flyout.col-content-wrapper.liquid-glass .liquid-glass--bend {
+        filter: none; /* removes the feDisplacementMap warp */
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+    .flyout.col-content-wrapper.liquid-glass .liquid-glass--face {
+        background: rgba(255, 131, 164, 0.44); /* a touch stronger on small */
+    }
+}
+
+/* Fallback for browsers that don't support container queries: if the
+   viewport is narrow (likely causing the flyout to render smaller),
+   remove the warp and reduce blur as well. */
+@media (max-width: 800px) {
+    .flyout.col-content-wrapper.liquid-glass .liquid-glass--bend {
+        filter: none;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+    .flyout.col-content-wrapper.liquid-glass .liquid-glass--face {
+        background: rgba(255, 131, 164, 0.44);
+    }
 }
 
 /* Backdrop element used by the JS sticky code to preserve blur behind the
@@ -834,7 +942,7 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
 
 
 .window.glass:before {
-    opacity: .;
+    opacity: .5;
     filter: brightness(1.4);
 }
 
