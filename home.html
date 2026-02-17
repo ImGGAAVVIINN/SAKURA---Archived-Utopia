@@ -22,14 +22,99 @@
         </script>
 </head>
 <body class="has-scrollbar">
-    <!-- Welcome Splash Screen -->
-    <div id="welcome-splash" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url('images/welcomeBG.webp'); background-size: cover; background-position: center; z-index: 9999; display: flex; align-items: center; justify-content: center;">
-    <H1>DICKS!</H1>
-    </div>
+        <!-- White fade-in overlay -->
+        <div id="page-fade-overlay"></div>
+        
+        <!-- Welcome Splash Screen -->
+        <canvas id="welcome-splash" style="position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999;">
+                Your browser does not support canvas.
+        </canvas>
+        <div id="glass-icons-container">
+            <img id="glass-icon-start" src="images/icons/starthover.png" alt="" />
+            <img id="glass-icon-horizon" src="images/Horizon-OS.png" alt="" />
+        </div>
+        <img
+                id="welcome-splash-image"
+                src="images/welcomeBG.png"
+                alt=""
+        />
+
+        <script id="welcome-splash-shader" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform vec3 iResolution;
+            uniform float iTime;
+            uniform vec4 iMouse;
+            uniform sampler2D iChannel0;
+
+            void mainImage(out vec4 fragColor, in vec2 fragCoord)
+            {
+                const float NUM_ZERO = 0.0;
+                const float NUM_ONE = 1.0;
+                const float NUM_HALF = 0.5;
+                const float NUM_TWO = 2.0;
+                const float POWER_EXPONENT = 6.0;
+                const float MASK_MULTIPLIER_1 = 2500.0;
+                const float MASK_MULTIPLIER_2 = 2300.0;
+                const float MASK_MULTIPLIER_3 = 2700.0;
+                const float LENS_MULTIPLIER = 1400.0;
+                const float MASK_STRENGTH_1 = 8.0;
+                const float MASK_STRENGTH_2 = 16.0;
+                const float MASK_STRENGTH_3 = 2.0;
+                const float MASK_THRESHOLD_1 = 0.95;
+                const float MASK_THRESHOLD_2 = 0.9;
+                const float MASK_THRESHOLD_3 = 1.5;
+                const float SAMPLE_RANGE = 4.0;
+                const float SAMPLE_OFFSET = 0.5;
+                const float GRADIENT_RANGE = 0.2;
+                const float GRADIENT_OFFSET = 0.1;
+                const float GRADIENT_EXTREME = -1000.0;
+                const float LIGHTING_INTENSITY = 0.3;
+
+                vec2 uv = fragCoord / iResolution.xy;
+                vec2 mouse = iMouse.xy;
+                vec2 m2 = (uv - mouse / iResolution.xy);
+
+                float roundedBox = pow(abs(m2.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2.y), POWER_EXPONENT);
+                float rb1 = clamp((NUM_ONE - roundedBox * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
+                float rb2 = clamp((MASK_THRESHOLD_1 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
+                    clamp(pow(MASK_THRESHOLD_2 - roundedBox * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
+                float rb3 = clamp((MASK_THRESHOLD_3 - roundedBox * MASK_MULTIPLIER_3) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE) -
+                    clamp(pow(NUM_ONE - roundedBox * MASK_MULTIPLIER_3, NUM_ONE) * MASK_STRENGTH_3, NUM_ZERO, NUM_ONE);
+
+                fragColor = vec4(NUM_ZERO);
+                float transition = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
+
+                if (transition > NUM_ZERO) {
+                    vec2 lens = ((uv - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBox * LENS_MULTIPLIER) + NUM_HALF);
+                    float total = NUM_ZERO;
+                    for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
+                        for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
+                            vec2 offset = vec2(x, y) * SAMPLE_OFFSET / iResolution.xy;
+                            fragColor += texture2D(iChannel0, offset + lens);
+                            total += NUM_ONE;
+                        }
+                    }
+                    fragColor /= total;
+
+                    float gradient = clamp((clamp(m2.y, NUM_ZERO, GRADIENT_RANGE) + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE) +
+                        clamp((clamp(-m2.y, GRADIENT_EXTREME, GRADIENT_RANGE) * rb3 + GRADIENT_OFFSET) / NUM_TWO, NUM_ZERO, NUM_ONE);
+                    vec4 lighting = clamp(fragColor + vec4(rb1) * gradient + vec4(rb2) * LIGHTING_INTENSITY, NUM_ZERO, NUM_ONE);
+
+                    fragColor = mix(texture2D(iChannel0, uv), lighting, transition);
+                } else {
+                    fragColor = texture2D(iChannel0, uv);
+                }
+            }
+
+            void main() {
+                mainImage(gl_FragColor, gl_FragCoord.xy);
+            }
+        </script>
     
     <main>
 
-                    <div class="notification flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%;">
+            <div class="notification flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%;">
                 <div class="liquid-glass--bend"></div>
                 <div class="liquid-glass--face"></div>
                 <div class="liquid-glass--edge"></div>
@@ -37,18 +122,18 @@
                 <p>asdfasdgdgh  sdgf</p>
             </div>
 
-            <div class="music flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%; font-family: 'Frutiger', sans-serif;">
+            <div class="music flyout col-content-wrapper liquid-glass" style="left: 82%; top: 15%;">
                 <div class="liquid-glass--bend"></div>
                 <div class="liquid-glass--face"></div>
                 <div class="liquid-glass--edge"></div>
 
-                <div style="background-color: rgba(50, 50, 50, 0.7); padding: 1rem; border-radius: 0.5rem;">
-                    <p style="color: rgb(176, 176, 176);">Last song</p>
-                    <h2 style="margin-top: 0.2rem; margin-bottom: 0.2rem; color:white;">Now Playing</h2>
-                    <p style="color:white;">Artist - Song Title</p>
-                    <p style="color: rgb(176, 176, 176);">Next song</p>
+                <div style="background-color: rgba(50, 50, 50, 0.7); padding: 1rem; border-radius: 0.5rem;font-weight: 100;">
+                    <p style="color: rgb(180, 180, 180);" id="lastSong"></p>
+                    <h2 style="margin-top: 0.01rem; margin-bottom: 0.1rem; color:white;">Now Playing</h2>
+                    <p style="color:white;" id="currentSong"></p>
+                    <p style="color: rgb(180, 180, 180);" id="nextSong"></p>
                 </div>
-                <img src="images/cd.png" style="width: 75%; height: 50%; margin-bottom: 1rem; margin: auto;top: 1rem;" alt="Album Art">
+                <img id="cdImage" class="cd-spinning" src="images/cd.png" style="width: 75%; height: 50%; margin-bottom: 1rem; margin: auto;top: 1rem;" alt="Album Art">
                 <div class="music-player-controls" style="margin: auto;top: 2rem;">
                   <button id="audioBack" title="Previous song" style="background: none; border: none; margin-right: 1rem;">
                     <img src="images/icons/music/music_player_back.png" alt="Music Player - Back Button">
@@ -69,7 +154,7 @@
                 <div class="window-wrapper no-padding" style="opacity: 1; z-index: 1; top: 2rem; right: 2rem; min-width: 360px;">
                     <div class="window colored glass">
                         <div class="title-bar dbl-maximize">
-                            <div class="title-bar-text">SAKURA - </div>
+                            <div class="title-bar-text">SAKURA - Archived Utopia</div>
                             <div class="title-bar-controls">
                                 <button aria-label="Minimize" class="minimize"></button>
                                 <button aria-label="Maximize" class="maximize"></button>
@@ -90,7 +175,7 @@
                 <div class="window-wrapper no-padding" style="opacity: 1; z-index: 1; top: 100rem; left: 354px; min-width: 360px;">
                     <div class="window colored glass">
                         <div class="title-bar dbl-maximize">
-                            <div class="title-bar-text">Archived Utopia</div>
+                            <div class="title-bar-text">SAKURA - Archived Utopia</div>
                             <div class="title-bar-controls">
                                 <button aria-label="Minimize" class="minimize"></button>
                                 <button aria-label="Maximize" class="maximize"></button>
@@ -189,7 +274,7 @@
 
 
             <div class="taskbar-icons">
-                <img src="images/icons/tray/0.png" alt="icon1" class="small-icon sounds">
+                <img src="images/icons/tray/0.png" alt="icon1" class="small-icon sounds" id="volumeIcon">
                 <img src="images/icons/music.webp" alt="icon4" class="small-icon music">
                 <img src="images/icons/tray/notification.png" alt="icon1" class="small-icon notification">
             </div>
@@ -274,34 +359,157 @@
     <script src="home.js"></script>
     
     <script>
+        // Global audio state for music controls
+        const musicBasePath = 'sounds/songs/';
+        let bgMusic = null;
+        let playlist = [];
+        let currentIndex = 0;
+        const volumeLevels = [0, 0.1, 0.2, 0.35, 0.5];
+        let volumeLevelIndex = 3;
+        const volumeStorageKey = 'musicVolumeLevelIndex';
+
+        const getSongLabel = (filename) => {
+            if (!filename) return '';
+            return filename.replace(/\.[^/.]+$/, '');
+        };
+
+        const updateSongLabels = () => {
+            if (!playlist.length) return;
+            const lastIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+            const nextIndex = (currentIndex + 1) % playlist.length;
+
+            const lastEl = document.getElementById('lastSong');
+            const currentEl = document.getElementById('currentSong');
+            const nextEl = document.getElementById('nextSong');
+
+            if (lastEl) lastEl.textContent = getSongLabel(playlist[lastIndex]);
+            if (currentEl) currentEl.textContent = getSongLabel(playlist[currentIndex]);
+            if (nextEl) nextEl.textContent = getSongLabel(playlist[nextIndex]);
+        };
+
+        const loadStoredVolume = () => {
+            const stored = Number.parseInt(localStorage.getItem(volumeStorageKey), 10);
+            if (!Number.isNaN(stored) && stored >= 0 && stored < volumeLevels.length) {
+                volumeLevelIndex = stored;
+            }
+        };
+
+        const persistVolume = () => {
+            localStorage.setItem(volumeStorageKey, String(volumeLevelIndex));
+        };
+
+        const updateVolumeIcon = () => {
+            const volumeIcon = document.getElementById('volumeIcon');
+            if (volumeIcon) {
+                volumeIcon.src = `images/icons/tray/${volumeLevelIndex}.png`;
+            }
+        };
+
+        const applyVolume = () => {
+            if (!bgMusic) return;
+            bgMusic.volume = volumeLevels[volumeLevelIndex];
+        };
+
+        const ensureAudio = () => {
+            if (bgMusic) return;
+            bgMusic = new Audio();
+            applyVolume();
+            bgMusic.loop = false;
+            bgMusic.addEventListener('ended', () => {
+                playNext(true);
+            });
+        };
+
+        const setPlayingState = (isPlaying) => {
+            const playPauseImage = document.getElementById('audioPlayPauseImage');
+            const cdImage = document.getElementById('cdImage');
+            if (playPauseImage) {
+                playPauseImage.src = isPlaying
+                    ? 'images/icons/music/music_player_pause.png'
+                    : 'images/icons/music/music_player_play.png';
+            }
+            if (cdImage) {
+                if (isPlaying) {
+                    cdImage.classList.add('playing');
+                } else {
+                    cdImage.classList.remove('playing');
+                }
+            }
+        };
+
+        const loadTrack = (index, autoplay) => {
+            if (!playlist.length) return;
+            ensureAudio();
+            currentIndex = (index + playlist.length) % playlist.length;
+            bgMusic.src = `${musicBasePath}${playlist[currentIndex]}`;
+            updateSongLabels();
+            if (autoplay) {
+                bgMusic.play()
+                    .then(() => setPlayingState(true))
+                    .catch(err => console.log('Background music play failed:', err));
+            } else {
+                setPlayingState(false);
+            }
+        };
+
+        const playNext = (autoplay = true) => {
+            if (!playlist.length) return;
+            loadTrack(currentIndex + 1, autoplay);
+        };
+
+        const playPrev = (autoplay = true) => {
+            if (!playlist.length) return;
+            loadTrack(currentIndex - 1, autoplay);
+        };
+
+        const loadPlaylist = async () => {
+            try {
+                const response = await fetch(`${musicBasePath}playlist.json`, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Playlist load failed: ${response.status}`);
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('Playlist is empty or invalid.');
+                }
+                playlist = data;
+            } catch (err) {
+                console.log('Playlist load failed:', err);
+                playlist = [];
+            }
+        };
+
         // Welcome splash screen logic
         window.addEventListener('load', function() {
             const welcomeSplash = document.getElementById('welcome-splash');
             const welcomeAudio = new Audio('sounds/welcome.mp3');
             const taskbar = document.querySelector('.taskbar-container');
-            
+
+            loadStoredVolume();
+
             // Set audio volume to be quieter
             welcomeAudio.volume = 0.3;
-            
+
             // Prevent scrolling during welcome screen and hide scrollbar
             document.body.style.overflow = 'hidden';
             document.documentElement.style.overflow = 'hidden';
-            
+
             // Hide taskbar during welcome
             if (taskbar) {
                 taskbar.style.visibility = 'hidden';
             }
-            
+
             // Play the welcome sound
             welcomeAudio.play().catch(err => console.log('Audio play failed:', err));
-            
+
             // When audio finishes, scroll to top and hide splash
             welcomeAudio.addEventListener('ended', function() {
+                // Immediately hide the glass inner image
+                if (window._dismissGlassImage) window._dismissGlassImage();
+
                 // Fade out the splash screen
                 welcomeSplash.style.transition = 'opacity 0.5s ease-out';
                 welcomeSplash.style.opacity = '0';
-                
-                setTimeout(function() {
+
+                setTimeout(async function() {
                     welcomeSplash.style.display = 'none';
                     // Re-enable scrolling
                     document.body.style.overflow = '';
@@ -312,14 +520,65 @@
                     if (taskbar) {
                         taskbar.style.visibility = 'visible';
                     }
-                    
+
                     // Play background music after welcome finishes
-                    const bgMusic = new Audio('sounds/songs/1. Xploshi - Rafflesia Channel.flac');
-                    bgMusic.volume = 0.1;
-                    bgMusic.loop = true;
-                    bgMusic.play().catch(err => console.log('Background music play failed:', err));
+                    await loadPlaylist();
+                    if (playlist.length) {
+                        loadTrack(0, true);
+                    }
+                    updateVolumeIcon();
+                    setTimeout(function() {
+                        if (window.triggerMusicFlyoutIntro) {
+                            window.triggerMusicFlyoutIntro();
+                        }
+                    }, 2000);
                 }, 500);
             });
+        });
+
+        // Play/Pause and skip button functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const playPauseButton = document.getElementById('audioPlayPause');
+            const backButton = document.getElementById('audioBack');
+            const forwardButton = document.getElementById('audioForward');
+            const volumeIcon = document.getElementById('volumeIcon');
+
+            if (playPauseButton) {
+                playPauseButton.addEventListener('click', function() {
+                    if (!bgMusic) return;
+
+                    if (bgMusic.paused) {
+                        bgMusic.play()
+                            .then(() => setPlayingState(true))
+                            .catch(err => console.log('Play failed:', err));
+                    } else {
+                        bgMusic.pause();
+                        setPlayingState(false);
+                    }
+                });
+            }
+
+            if (backButton) {
+                backButton.addEventListener('click', function() {
+                    playPrev(true);
+                });
+            }
+
+            if (forwardButton) {
+                forwardButton.addEventListener('click', function() {
+                    playNext(true);
+                });
+            }
+
+            if (volumeIcon) {
+                updateVolumeIcon();
+                volumeIcon.addEventListener('click', function() {
+                    volumeLevelIndex = (volumeLevelIndex + 1) % volumeLevels.length;
+                    applyVolume();
+                    updateVolumeIcon();
+                    persistVolume();
+                });
+            }
         });
     </script>
 </body>

@@ -6,8 +6,217 @@
 // The page loads these from CDN, so we can reference them as globals instead
 // of using ES module imports which require the script to be loaded as a module.
 
+const initWelcomeSplashGlass = () => {
+    const canvas = document.getElementById("welcome-splash");
+    const img = document.getElementById("welcome-splash-image");
+    const shaderScript = document.getElementById("welcome-splash-shader");
+
+    if (!canvas || !img || !shaderScript) return;
+
+    const gl = canvas.getContext("webgl", { antialias: true, premultipliedAlpha: false });
+    if (!gl) return;
+
+    const setCanvasSize = () => {
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(window.innerWidth * ratio);
+        canvas.height = Math.floor(window.innerHeight * ratio);
+    };
+
+    setCanvasSize();
+
+    const vsSource = `
+        attribute vec2 position;
+        void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+        }
+    `;
+
+    const fsSource = shaderScript.textContent || "";
+
+    const createShader = (type, source) => {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error("Shader error:", gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    };
+
+    const vs = createShader(gl.VERTEX_SHADER, vsSource);
+    const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
+    if (!vs || !fs) return;
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error("Program link error:", gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+        return;
+    }
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        gl.STATIC_DRAW
+    );
+
+    const position = gl.getAttribLocation(program, "position");
+    if (position < 0) return;
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+        resolution: gl.getUniformLocation(program, "iResolution"),
+        time: gl.getUniformLocation(program, "iTime"),
+        mouse: gl.getUniformLocation(program, "iMouse"),
+        texture: gl.getUniformLocation(program, "iChannel0"),
+    };
+
+    // Glass inner images container that tracks the lens position
+    const glassIconsContainer = document.getElementById('glass-icons-container');
+
+    // Glass position animation state
+    // Start off-screen below (negative y in WebGL coords = below viewport)
+    let glassPos = { x: 0, y: 0 };
+    let glassTarget = { x: 0, y: 0 };
+    let glassAnimating = false;
+    let glassArrived = false;
+
+    const initGlassPosition = () => {
+        glassPos.x = canvas.width * 0.5;
+        glassPos.y = -canvas.height * 0.6; // start well below the screen
+        glassTarget.x = canvas.width * 0.5;
+        glassTarget.y = canvas.height * 0.5;
+    };
+    initGlassPosition();
+
+    // Map glassPos (WebGL pixel coords) to CSS screen coords and update the images
+    let glassDismissed = false;
+    const updateGlassImages = () => {
+        if (!glassIconsContainer || glassDismissed) return;
+        const ratio = window.devicePixelRatio || 1;
+        const screenX = glassPos.x / ratio;
+        const screenY = (canvas.height - glassPos.y) / ratio; // flip Y
+        glassIconsContainer.style.left = screenX + 'px';
+        glassIconsContainer.style.top = screenY + 'px';
+        glassIconsContainer.style.transform = 'translate(-50%, -50%)';
+        if (glassAnimating) {
+            glassIconsContainer.style.opacity = '1';
+        }
+    };
+
+    // Allow external code to stop the render loop from overriding opacity
+    window._dismissGlassImage = () => {
+        glassDismissed = true;
+        if (glassIconsContainer) {
+            glassIconsContainer.style.display = 'none';
+        }
+    };
+
+    // Expose a trigger for the fade callback to start the bounce-in
+    window._startGlassBounceIn = () => {
+        initGlassPosition(); // re-sync in case of resize
+        glassAnimating = true;
+    };
+
+    const texture = gl.createTexture();
+    let textureReady = false;
+    const setupTexture = () => {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            img
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        textureReady = true;
+    };
+
+    if (img.complete) {
+        setupTexture();
+    } else {
+        img.onload = setupTexture;
+    }
+
+    window.addEventListener("resize", setCanvasSize, { passive: true });
+
+    const startTime = performance.now();
+    const render = () => {
+        if (!document.body.contains(canvas) || canvas.style.display === "none") return;
+        if (!textureReady) {
+            requestAnimationFrame(render);
+            return;
+        }
+
+        const currentTime = (performance.now() - startTime) / 1000;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Animate glass position with ease-out spring
+        if (glassAnimating && !glassArrived) {
+            const lerp = 0.06; // lower = slower / smoother
+            glassPos.x += (glassTarget.x - glassPos.x) * lerp;
+            glassPos.y += (glassTarget.y - glassPos.y) * lerp;
+            // Snap when close enough
+            if (Math.abs(glassPos.y - glassTarget.y) < 0.5) {
+                glassPos.x = glassTarget.x;
+                glassPos.y = glassTarget.y;
+                glassArrived = true;
+            }
+        }
+
+        gl.uniform3f(uniforms.resolution, canvas.width, canvas.height, 1.0);
+        gl.uniform1f(uniforms.time, currentTime);
+        gl.uniform4f(uniforms.mouse, glassPos.x, glassPos.y, 0, 0);
+
+        // Sync the overlay images to the glass lens position
+        updateGlassImages();
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(uniforms.texture, 0);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    };
+
+    render();
+};
+
 document.addEventListener("DOMContentLoaded", () => {
     gsap.registerPlugin(ScrollTrigger, SplitText);
+    initWelcomeSplashGlass();
+    
+    // Fade out the white overlay, then bounce the glass in from below
+    const fadeOverlay = document.getElementById('page-fade-overlay');
+    if (fadeOverlay) {
+        // Small delay to ensure canvas is ready
+        setTimeout(() => {
+            fadeOverlay.style.opacity = '0';
+            // After fade finishes, trigger the glass bounce-in
+            setTimeout(() => {
+                fadeOverlay.remove();
+                if (window._startGlassBounceIn) window._startGlassBounceIn();
+            }, 800);
+        }, 100);
+    }
 
     // Prevent browser from restoring scroll position on navigation/reload
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
@@ -807,6 +1016,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (iconEl) iconEl.setAttribute('aria-pressed', 'true');
             }
         }
+
+        function flashMusicIconTwice() {
+            if (!musicIcon) return;
+            musicIcon.classList.remove('music-icon-flash');
+            void musicIcon.offsetWidth;
+            musicIcon.classList.add('music-icon-flash');
+            setTimeout(() => {
+                if (!musicIcon) return;
+                musicIcon.classList.remove('music-icon-flash');
+                void musicIcon.offsetWidth;
+                musicIcon.classList.add('music-icon-flash');
+            }, 900);
+        }
+
+        window.triggerMusicFlyoutIntro = function() {
+            if (musicFlyout && musicIcon && !musicFlyout.classList.contains('flyout-visible')) {
+                toggleFlyout(musicFlyout, musicIcon);
+            }
+            flashMusicIconTwice();
+        };
 
         // make icon images keyboard accessible and wire up events
         [[notificationIcon, notificationFlyout], [musicIcon, musicFlyout]].forEach(([icon, flyout]) => {

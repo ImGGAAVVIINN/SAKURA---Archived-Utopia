@@ -3,6 +3,12 @@
     src: url('fonts/frutiger/Frutiger.ttf') format('truetype');
 }
 
+@font-face {
+    font-family: 'Segoe UI Light';
+    src: url('fonts/segoe-ui/segoe-ui-light.ttf') format('truetype');
+    font-weight: 300;
+}
+
 .intro,
 .sticky-cols,
 .outro {
@@ -115,6 +121,51 @@
    absolute children pushed outside the viewport */
 html, body {
     overflow-x: hidden;
+}
+
+#welcome-splash {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+}
+
+#welcome-splash-image {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#glass-icons-container {
+    position: fixed;
+    z-index: 10001;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    /* Start hidden; JS will position it */
+    opacity: 0;
+    transform-origin: center center;
+}
+
+#glass-icon-start,
+#glass-icon-horizon {
+    height: 10vh;
+    width: auto;
+    display: block;
+}
+
+#page-fade-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #ffffff;
+    z-index: 10000;
+    pointer-events: none;
+    transition: opacity 0.8s ease-out;
 }
 
 section {
@@ -407,6 +458,17 @@ img {
     display: block;
 }
 
+@keyframes music-icon-flash {
+    0%, 100% { filter: none; }
+    20%, 40%, 60%, 80% {
+        filter: brightness(2) drop-shadow(0 0 6px rgba(255,255,255,0.9));
+    }
+}
+
+.small-icon.music.music-icon-flash {
+    animation: music-icon-flash 0.8s ease-in-out 1;
+}
+
 /* Ensure icons are above most content so they're clickable */
 .taskbar-icons { position: relative; z-index: 10001; }
 
@@ -535,6 +597,17 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
 .music.col-content-wrapper.liquid-glass.col-content-wrapper.liquid-glass {
     max-height: 28rem;
     max-width: 20rem;
+    font-family: 'Segoe UI Light', sans-serif;
+}
+
+.music #lastSong,
+.music #currentSong,
+.music #nextSong {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 /* Custom tweaks for flyout glass: less blur, stronger sakurapink tint,
@@ -1259,4 +1332,23 @@ body.has-scrollbar::-webkit-scrollbar-thumb:active:horizontal{
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
+}
+
+/* CD spinning animation */
+@keyframes spin-cd {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.cd-spinning {
+    animation: spin-cd 0.75s linear infinite;
+    animation-play-state: paused;
+}
+
+.cd-spinning.playing {
+    animation-play-state: running;
 }
