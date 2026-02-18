@@ -6,6 +6,7 @@
   <title>Home Page</title>
   <link rel="stylesheet" href="home.css" />
         <link rel="stylesheet" href="taskbar-embed.css" />
+        <link rel="stylesheet" href="https://unpkg.com/7.css/dist/7.scoped.css" />
     <!-- GSAP Core -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <!-- GSAP Plugins -->
@@ -13,6 +14,7 @@
     <script src="https://assets.codepen.io/16327/SplitText3.min.js"></script>
     <!-- Lenis -->
     <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.35/dist/lenis.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
         <script>
             // Set manual scroll restoration early so the browser doesn't restore scroll on reload
             if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
@@ -30,8 +32,31 @@
                 Your browser does not support canvas.
         </canvas>
         <div id="glass-icons-container">
-            <img id="glass-icon-start" src="images/icons/starthover.png" alt="" />
-            <img id="glass-icon-horizon" src="images/Horizon-OS.png" alt="" />
+            <div class="glass-icon-top-row">
+                <img id="glass-icon-start" src="images/icons/starthover.png" alt="" />
+                <div class="glass-icon-right-stack">
+                    <img id="glass-icon-horizon" src="images/Horizon-OS.png" alt="" />
+                    <img id="glass-icon-version" src="images/1.0.png" alt="" />
+                    <h1 style="font-family: 'Frutiger'; font-size: 1rem; margin-top: 0.1rem;">Common World Institute of Technology</h1>
+                </div>
+            </div>
+            <div class="glass-icon-bottom-row">
+                <img src="images/icons/internet.png" alt="" />
+                <img src="images/icons/run-build-configure.svg" alt="" />
+                <img src="images/icons/mouse.png" alt="" />
+                <img src="images/icons/multiWindows.svg" alt="" />
+                <img src="images/icons/laptop.png" alt="" />
+                <img src="images/icons/seperation.png" alt="" />
+                <img src="images/icons/system-software-update.svg" alt="" />
+            </div>
+            <div id="debugging" style="background-color: black; width: 28rem ;margin: auto; margin-top: 0.5rem; padding: 0.5rem; border-radius: 0.5rem;">
+                
+            </div>
+        
+        </div>
+        <div id="welcome-progressbar" class="win7" style="position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: calc(100vw + 32px); margin: 0; padding: 0; z-index: 10002; pointer-events: none;">
+            <div role="progressbar" class="marquee" style="margin: 0; width: 100%; border-radius: 0;"></div>
+        </div>
         </div>
         <img
                 id="welcome-splash-image"
@@ -54,6 +79,8 @@
                 const float NUM_HALF = 0.5;
                 const float NUM_TWO = 2.0;
                 const float POWER_EXPONENT = 6.0;
+                const float LENS_SIZE_SCALE = 1.2;
+                const float LENS_WIDTH_PADDING = 0.1;
                 const float MASK_MULTIPLIER_1 = 2500.0;
                 const float MASK_MULTIPLIER_2 = 2300.0;
                 const float MASK_MULTIPLIER_3 = 2700.0;
@@ -74,8 +101,11 @@
                 vec2 uv = fragCoord / iResolution.xy;
                 vec2 mouse = iMouse.xy;
                 vec2 m2 = (uv - mouse / iResolution.xy);
+                vec2 m2Scaled = m2 * LENS_SIZE_SCALE;
 
-                float roundedBox = pow(abs(m2.x * iResolution.x / iResolution.y), POWER_EXPONENT) + pow(abs(m2.y), POWER_EXPONENT);
+                float ax = abs(m2Scaled.x * iResolution.x / iResolution.y);
+                float ay = abs(m2Scaled.y);
+                float roundedBox = pow(max(NUM_ZERO, ax - LENS_WIDTH_PADDING), POWER_EXPONENT) + pow(ay, POWER_EXPONENT);
                 float rb1 = clamp((NUM_ONE - roundedBox * MASK_MULTIPLIER_1) * MASK_STRENGTH_1, NUM_ZERO, NUM_ONE);
                 float rb2 = clamp((MASK_THRESHOLD_1 - roundedBox * MASK_MULTIPLIER_2) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE) -
                     clamp(pow(MASK_THRESHOLD_2 - roundedBox * MASK_MULTIPLIER_2, NUM_ONE) * MASK_STRENGTH_2, NUM_ZERO, NUM_ONE);
@@ -86,7 +116,8 @@
                 float transition = smoothstep(NUM_ZERO, NUM_ONE, rb1 + rb2);
 
                 if (transition > NUM_ZERO) {
-                    vec2 lens = ((uv - NUM_HALF) * NUM_ONE * (NUM_ONE - roundedBox * LENS_MULTIPLIER) + NUM_HALF);
+                    float lensAmount = max(NUM_ZERO, NUM_ONE - roundedBox * LENS_MULTIPLIER);
+                    vec2 lens = ((uv - NUM_HALF) * lensAmount + NUM_HALF);
                     float total = NUM_ZERO;
                     for (float x = -SAMPLE_RANGE; x <= SAMPLE_RANGE; x++) {
                         for (float y = -SAMPLE_RANGE; y <= SAMPLE_RANGE; y++) {
@@ -150,6 +181,9 @@
             </div>
 
         <section class="intro">
+            <div class="intro-visualiser" aria-hidden="true">
+                <canvas id="introVisualiserCanvas"></canvas>
+            </div>
             <div class="intro-top-right" style="color: #F86BC7; position: absolute; top: 2rem; right: 0; width: 50%; height: 50%; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding: 2rem; box-sizing: border-box;">
                 <div class="window-wrapper no-padding" style="opacity: 1; z-index: 1; top: 2rem; right: 2rem; min-width: 360px;">
                     <div class="window colored glass">
@@ -163,8 +197,8 @@
                         </div>
                         <div class="window-body">
                             <div class="notepad-container" contenteditable=""><pre>
-                                <h1>Top Right Title</h1>
-                                <p>This is the top right quadrant.</p>
+                                <h1>Not Just A Base</h1>
+                                <p>This is a fully automated, eco-integrated logistics hub</p>
                             </pre>
                             </div>
                         </div>
@@ -184,8 +218,8 @@
                         </div>
                         <div class="window-body">
                             <div class="notepad-container" contenteditable=""><pre>
-                                <h1>Bottom Left Title</h1>
-                                <p>This is the bottom left quadrant.</p>
+                                <h1>Eco-friendly</h1>
+                                <p>A Sky Base that does not affect the Ground Ecosystem</p>
                             </pre>
                             </div>
                         </div>
@@ -298,14 +332,14 @@
                         <div class="liquid-glass--face"></div>
                         <div class="liquid-glass--edge"></div>
                         <h2>Closed-loop & Fully Automated</h2>
-                        <p>This column stays in place while you scroll.</p>
+                        <p>Every resource in this base is produced, processed, and redistributed without manual input. Raw materials flow from farms to smelters to storage, feeding crafting, expansion, and trade in a seamless cycle. Nothing is decorative automation. Every system is integrated, scalable, and designed to run indefinitely without intervention.</p>
                     </div>
                 </div>
             </div>
             <div class="col col-2">
                 <div class="col-img col-img-1">
                     <div class="col-img-wrapper">
-                        <img src="https://preview.redd.it/rain-girls-v0-w10dii4qt17g1.jpeg?width=1080&crop=smart&auto=webp&s=976cc71babe08b8f956aec581f0691c1e434b363" alt="">
+                        <img src="images/storage.png" alt="">
                     </div>
                 </div>
                 <div class="col-img col-img-2">
@@ -320,20 +354,20 @@
                     <div class="liquid-glass--face"></div>
                     <div class="liquid-glass--edge"></div>
                     <h2>Interconnected Transportation hub</h2>
-                    <p>This is another sticky column with content.</p>
+                    <p>This base functions as a regional nexus where local metro lines, regional rail, and high-speed routes converge. It isn’t just a stop, it’s infrastructure. Movement between distant builds is intentional, efficient, and centralized, turning separate projects into a unified network.</p>
                 </div>
                 <div class="col-content-wrapper-2 liquid-glass">
                     <div class="liquid-glass--bend"></div>
                     <div class="liquid-glass--face"></div>
                     <div class="liquid-glass--edge"></div>
                     <h2>No visible farms. No exposed redstone. Pure Vibes</h2>
-                    <p>More content in the third sticky column.</p>
+                    <p>Efficiency is hidden beneath architecture. Farms operate out of sight, redstone remains fully integrated into the structure, and automation never compromises atmosphere. Water features, greenery, and polished materials define the space. Performance and aesthetics coexisting without visible machinery.</p>
                 </div>
             </div>
             <div class="col col-4">
                 <div class="col-img">
                     <div class="col-img-wrapper">
-                        <img src="https://preview.redd.it/rate-my-setup-1-10-v0-3qfhr5lvwr6g1.jpeg?width=1080&crop=smart&auto=webp&s=dbf2ed512fc029af186f1341ba192728b6f829af" alt="">
+                        <img src="images/mobFarmGarden.png"">
                     </div>
                 </div>                
             </div>
@@ -367,10 +401,89 @@
         const volumeLevels = [0, 0.1, 0.2, 0.35, 0.5];
         let volumeLevelIndex = 3;
         const volumeStorageKey = 'musicVolumeLevelIndex';
+        let introVisualizerContext = null;
+        let introVisualizerAnalyser = null;
+        let introVisualizerSource = null;
+        let introVisualizerData = null;
+        let introVisualizerConnectedAudio = null;
 
         const getSongLabel = (filename) => {
             if (!filename) return '';
             return filename.replace(/\.[^/.]+$/, '');
+        };
+
+        const initIntroVisualizer = () => {
+            const canvas = document.getElementById('introVisualiserCanvas');
+            const section = document.querySelector('.intro-visualiser');
+            if (!canvas || !section) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const resizeCanvas = () => {
+                const ratio = window.devicePixelRatio || 1;
+                const width = Math.max(1, section.clientWidth);
+                const height = Math.max(1, section.clientHeight);
+                canvas.width = Math.floor(width * ratio);
+                canvas.height = Math.floor(height * ratio);
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(ratio, ratio);
+            };
+
+            const setupAnalyser = () => {
+                if (!bgMusic || introVisualizerConnectedAudio === bgMusic) return;
+
+                if (!introVisualizerContext) {
+                    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextCtor) return;
+                    introVisualizerContext = new AudioContextCtor();
+                }
+
+                introVisualizerAnalyser = introVisualizerContext.createAnalyser();
+                introVisualizerAnalyser.fftSize = 1024;
+                introVisualizerSource = introVisualizerContext.createMediaElementSource(bgMusic);
+                introVisualizerSource.connect(introVisualizerAnalyser);
+                introVisualizerAnalyser.connect(introVisualizerContext.destination);
+                introVisualizerData = new Uint8Array(introVisualizerAnalyser.frequencyBinCount);
+                introVisualizerConnectedAudio = bgMusic;
+            };
+
+            const draw = () => {
+                requestAnimationFrame(draw);
+
+                const width = section.clientWidth;
+                const height = section.clientHeight;
+                ctx.clearRect(0, 0, width, height);
+
+                setupAnalyser();
+                if (!introVisualizerAnalyser || !introVisualizerData) return;
+
+                if (introVisualizerContext && introVisualizerContext.state === 'suspended') {
+                    introVisualizerContext.resume().catch(() => {});
+                }
+
+                introVisualizerAnalyser.getByteFrequencyData(introVisualizerData);
+
+                const bufferLength = introVisualizerData.length;
+                const barGap = 3;
+                const targetBarWidth = 4.5;
+                const barCount = Math.max(1, Math.floor((width + barGap) / (targetBarWidth + barGap)) * 2);
+                const barWidth = Math.max((width - (barCount - 1) * barGap) / barCount, 3);
+                const sampleStep = bufferLength / barCount;
+                let x = 0;
+
+                for (let index = 0; index < barCount; index++) {
+                    const sampleIndex = Math.min(bufferLength - 1, Math.floor(index * sampleStep));
+                    const barHeight = (introVisualizerData[sampleIndex] / 255) * height;
+                    ctx.fillStyle = 'rgba(248, 107, 199, 0.88)';
+                    ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+                    x += barWidth + barGap;
+                }
+            };
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas, { passive: true });
+            draw();
         };
 
         const updateSongLabels = () => {
@@ -480,6 +593,7 @@
         // Welcome splash screen logic
         window.addEventListener('load', function() {
             const welcomeSplash = document.getElementById('welcome-splash');
+            const welcomeProgressBar = document.getElementById('welcome-progressbar');
             const welcomeAudio = new Audio('sounds/welcome.mp3');
             const taskbar = document.querySelector('.taskbar-container');
 
@@ -508,9 +622,16 @@
                 // Fade out the splash screen
                 welcomeSplash.style.transition = 'opacity 0.5s ease-out';
                 welcomeSplash.style.opacity = '0';
+                if (welcomeProgressBar) {
+                    welcomeProgressBar.style.transition = 'opacity 0.5s ease-out';
+                    welcomeProgressBar.style.opacity = '0';
+                }
 
                 setTimeout(async function() {
                     welcomeSplash.style.display = 'none';
+                    if (welcomeProgressBar) {
+                        welcomeProgressBar.style.display = 'none';
+                    }
                     // Re-enable scrolling
                     document.body.style.overflow = '';
                     document.documentElement.style.overflow = '';
@@ -538,6 +659,8 @@
 
         // Play/Pause and skip button functionality
         document.addEventListener('DOMContentLoaded', function() {
+            initIntroVisualizer();
+
             const playPauseButton = document.getElementById('audioPlayPause');
             const backButton = document.getElementById('audioBack');
             const forwardButton = document.getElementById('audioForward');

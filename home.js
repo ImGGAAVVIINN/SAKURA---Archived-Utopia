@@ -6,6 +6,178 @@
 // The page loads these from CDN, so we can reference them as globals instead
 // of using ES module imports which require the script to be loaded as a module.
 
+const isBubbleCollided = (bubbleA, bubbleB) => {
+    const deltaX = Math.abs(bubbleA.x - bubbleB.x);
+    const deltaY = Math.abs(bubbleA.y - bubbleB.y);
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    return distance < bubbleA.size;
+};
+
+const rotateVelocity = (velocity, angle) => ({
+    x: velocity.x * Math.cos(angle) - velocity.y * Math.sin(angle),
+    y: velocity.x * Math.sin(angle) + velocity.y * Math.cos(angle),
+});
+
+const resolveBubbleCollision = (bubbleA, bubbleB) => {
+    const xVelocityDiff = bubbleA.velocity.x - bubbleB.velocity.x;
+    const yVelocityDiff = bubbleA.velocity.y - bubbleB.velocity.y;
+
+    const xDist = bubbleB.x - bubbleA.x;
+    const yDist = bubbleB.y - bubbleA.y;
+
+    if (xVelocityDiff * xDist + yVelocityDiff * yDist >= 0) {
+        const angle = -Math.atan2(bubbleB.y - bubbleA.y, bubbleB.x - bubbleA.x);
+        const massA = 1;
+        const massB = 1;
+
+        const velocityA = rotateVelocity(bubbleA.velocity, angle);
+        const velocityB = rotateVelocity(bubbleB.velocity, angle);
+
+        const postCollisionVelocityA = {
+            x: (velocityA.x * (massA - massB)) / (massA + massB) + (velocityB.x * 2 * massB) / (massA + massB),
+            y: velocityA.y,
+        };
+
+        const postCollisionVelocityB = {
+            x: (velocityB.x * (massA - massB)) / (massA + massB) + (velocityA.x * 2 * massB) / (massA + massB),
+            y: velocityB.y,
+        };
+
+        const finalVelocityA = rotateVelocity(postCollisionVelocityA, -angle);
+        const finalVelocityB = rotateVelocity(postCollisionVelocityB, -angle);
+
+        bubbleA.velocity.x = finalVelocityA.x;
+        bubbleA.velocity.y = finalVelocityA.y;
+        bubbleB.velocity.x = finalVelocityB.x;
+        bubbleB.velocity.y = finalVelocityB.y;
+    }
+};
+
+class IntroBubbleScreensaver {
+    constructor(container) {
+        this.container = container;
+        this.bubbles = [];
+        this.spawnTimeoutIds = [];
+        this.imageSwapIntervalId = null;
+        this.images = [];
+        this.currentBubbleImage = null;
+
+        this.p5Instance = new window.p5((p5) => {
+            this.p5 = p5;
+            p5.setup = this.setup.bind(this);
+            p5.draw = this.draw.bind(this);
+        }, container);
+    }
+
+    setup() {
+        const { p5, container } = this;
+        const width = container.offsetWidth;
+        const height = container.offsetHeight;
+
+        p5.createCanvas(width, height);
+
+        this.images = [
+            p5.loadImage('bubbles/img/bubble-red.png'),
+            p5.loadImage('bubbles/img/bubble-blue.png'),
+            p5.loadImage('bubbles/img/bubble-purple.png'),
+        ];
+
+        this.swapBubbleImage();
+        this.imageSwapIntervalId = window.setInterval(() => {
+            this.swapBubbleImage();
+        }, 5000);
+
+        let index = 0;
+        while (index++ < 16) {
+            const timeoutId = window.setTimeout(() => {
+                const maxVelocity = Math.max(height / 300, 1);
+                const size = width < height ? width / 5 : height / 5;
+
+                this.bubbles.push({
+                    size,
+                    x: 0,
+                    y: height - size,
+                    velocity: {
+                        x: p5.random(0.5, maxVelocity),
+                        y: p5.random(0.5, maxVelocity),
+                    },
+                });
+            }, index * 800);
+
+            this.spawnTimeoutIds.push(timeoutId);
+        }
+
+        this.resizeHandler = () => {
+            const nextWidth = container.offsetWidth;
+            const nextHeight = container.offsetHeight;
+            p5.resizeCanvas(nextWidth, nextHeight);
+        };
+
+        window.addEventListener('resize', this.resizeHandler, { passive: true });
+    }
+
+    draw() {
+        const { p5 } = this;
+        p5.clear();
+
+        if (!this.currentBubbleImage) return;
+
+        for (let index = 0; index < this.bubbles.length; index++) {
+            const bubble = this.bubbles[index];
+            p5.image(this.currentBubbleImage, bubble.x, bubble.y, bubble.size, bubble.size);
+            this.updateBubble(bubble, index);
+        }
+    }
+
+    swapBubbleImage() {
+        if (!this.images.length) return;
+        const randomIndex = Math.floor(this.p5.random(0, this.images.length));
+        this.currentBubbleImage = this.images[randomIndex];
+    }
+
+    updateBubble(bubble, bubbleIndex) {
+        const containerWidth = this.container.offsetWidth;
+        const containerHeight = this.container.offsetHeight;
+
+        bubble.x += bubble.velocity.x;
+        bubble.y += bubble.velocity.y;
+
+        if (bubble.x > containerWidth - bubble.size || bubble.x < 0) {
+            bubble.velocity.x *= -1;
+        }
+
+        if (bubble.y > containerHeight - bubble.size || bubble.y < 0) {
+            bubble.velocity.y *= -1;
+        }
+
+        for (let index = 0; index < this.bubbles.length; index++) {
+            if (index === bubbleIndex) continue;
+
+            const otherBubble = this.bubbles[index];
+            if (isBubbleCollided(bubble, otherBubble)) {
+                resolveBubbleCollision(bubble, otherBubble);
+            }
+        }
+    }
+
+    destroy() {
+        if (this.imageSwapIntervalId !== null) {
+            window.clearInterval(this.imageSwapIntervalId);
+        }
+
+        this.spawnTimeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+        this.spawnTimeoutIds = [];
+
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+        }
+
+        if (this.p5Instance) {
+            this.p5Instance.remove();
+        }
+    }
+}
+
 const initWelcomeSplashGlass = () => {
     const canvas = document.getElementById("welcome-splash");
     const img = document.getElementById("welcome-splash-image");
@@ -203,6 +375,114 @@ const initWelcomeSplashGlass = () => {
 document.addEventListener("DOMContentLoaded", () => {
     gsap.registerPlugin(ScrollTrigger, SplitText);
     initWelcomeSplashGlass();
+
+    const introSection = document.querySelector('.intro');
+    if (introSection && window.p5) {
+        const existingLayer = introSection.querySelector('.intro-bubbles-layer');
+        const bubblesLayer = existingLayer || document.createElement('div');
+        const idleDelayMs = 30 * 1000;
+        let idleStartTimerId = null;
+
+        if (!existingLayer) {
+            bubblesLayer.className = 'intro-bubbles-layer';
+            introSection.prepend(bubblesLayer);
+        }
+
+        const hideIntroBubbles = () => {
+            if (window._introBubbleScreensaver) {
+                window._introBubbleScreensaver.destroy();
+                window._introBubbleScreensaver = null;
+            }
+            bubblesLayer.style.display = 'none';
+        };
+
+        const showIntroBubbles = () => {
+            if (window._introBubbleScreensaver) return;
+            bubblesLayer.style.display = 'block';
+            window._introBubbleScreensaver = new IntroBubbleScreensaver(bubblesLayer);
+        };
+
+        const scheduleIdleStart = () => {
+            if (idleStartTimerId !== null) {
+                window.clearTimeout(idleStartTimerId);
+            }
+            idleStartTimerId = window.setTimeout(() => {
+                showIntroBubbles();
+            }, idleDelayMs);
+        };
+
+        const onUserActivity = () => {
+            hideIntroBubbles();
+            scheduleIdleStart();
+        };
+
+        hideIntroBubbles();
+        scheduleIdleStart();
+
+        [
+            'pointerdown',
+            'pointermove',
+            'mousedown',
+            'mousemove',
+            'keydown',
+            'wheel',
+            'touchstart',
+            'scroll',
+        ].forEach((eventName) => {
+            window.addEventListener(eventName, onUserActivity, { passive: true });
+        });
+    }
+
+    if (introSection) {
+        const introDayBackground = "url('images/introBgDay.png')";
+        const introNightBackground = "url('images/introBgNight.png')";
+        const oneMinute = 60 * 1000;
+        const fadeDurationMs = 1200;
+
+        let useDayBackground = true;
+        let fadeTimeoutId = null;
+        let cycleTimeoutId = null;
+        let isFading = false;
+        introSection.style.setProperty('--intro-bg-image-current', introDayBackground);
+        introSection.style.setProperty('--intro-bg-image-next', introNightBackground);
+        introSection.style.setProperty('--intro-bg-next-opacity', '0');
+
+        const scheduleNextCycle = () => {
+            if (cycleTimeoutId !== null) {
+                window.clearTimeout(cycleTimeoutId);
+            }
+            cycleTimeoutId = window.setTimeout(() => {
+                runIntroFade();
+            }, oneMinute);
+        };
+
+        const runIntroFade = () => {
+            if (isFading) return;
+            isFading = true;
+
+            if (fadeTimeoutId !== null) {
+                window.clearTimeout(fadeTimeoutId);
+            }
+
+            const nextBackground = useDayBackground ? introNightBackground : introDayBackground;
+            introSection.style.setProperty('--intro-bg-image-next', nextBackground);
+            introSection.style.setProperty('--intro-bg-next-opacity', '0');
+
+            requestAnimationFrame(() => {
+                introSection.style.setProperty('--intro-bg-next-opacity', '0.98');
+            });
+
+            fadeTimeoutId = window.setTimeout(() => {
+                useDayBackground = !useDayBackground;
+                introSection.style.setProperty('--intro-bg-image-current', nextBackground);
+                introSection.style.setProperty('--intro-bg-next-opacity', '0');
+                isFading = false;
+                scheduleNextCycle();
+            }, fadeDurationMs);
+        };
+
+        scheduleNextCycle();
+    }
     
     // Fade out the white overlay, then bounce the glass in from below
     const fadeOverlay = document.getElementById('page-fade-overlay');
@@ -220,6 +500,76 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Prevent browser from restoring scroll position on navigation/reload
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+
+    const startDebugLogSequence = () => {
+        const debugEl = document.getElementById('debugging');
+        if (!debugEl) return;
+
+        debugEl.style.fontFamily = "'Segoe UI Light', 'Frutiger', sans-serif";
+        debugEl.style.fontSize = '0.85rem';
+        debugEl.style.color = '#b8f6d1';
+        debugEl.style.lineHeight = '1.4';
+        debugEl.style.height = '2rem';
+        debugEl.style.overflow = 'hidden';
+
+        const lines = [
+            'Booting Horizon kernel...',
+            'Kernel ver: 4.8',
+            'Checking memory map...',
+            'Mounting user profiles...',
+            'Starting Plains Desktop Environment',
+            'Initializing compositor...',
+            'Loading audio stack...',
+            'Loading network stack...',
+            'Logging in user: Guest',
+            'Spawning UI shell...',
+            'Binding input drivers...',
+            'Syncing local clocks...',
+        ];
+
+        const errorCandidates = [
+            { chance: 0.12, text: 'Warning: audio bus drift detected, resyncing...' },
+            { chance: 0.09, text: 'Error: display handshake timeout, retrying...' },
+            { chance: 0.07, text: 'Warning: network route table stale, rebuilding...' },
+        ];
+
+        const delayBetween = () => 160 + Math.floor(Math.random() * 340);
+        const appendLine = (text, isError = false) => {
+            const line = document.createElement('div');
+            line.textContent = text;
+            if (isError) line.style.color = '#f3a6a6';
+            debugEl.appendChild(line);
+            const computedLineHeight = Number.parseFloat(getComputedStyle(debugEl).lineHeight) || 18;
+            const maxLines = Math.max(1, Math.floor(debugEl.clientHeight / computedLineHeight));
+            while (debugEl.children.length > maxLines) {
+                debugEl.removeChild(debugEl.firstChild);
+            }
+        };
+
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const run = async () => {
+            debugEl.innerHTML = '';
+            let errorCount = 0;
+            const maxErrors = 2;
+            for (const line of lines) {
+                appendLine(line);
+                const error = errorCandidates.find((item) => Math.random() < item.chance);
+                if (error && errorCount < maxErrors) {
+                    await sleep(delayBetween());
+                    appendLine(error.text, true);
+                    errorCount += 1;
+                }
+                await sleep(delayBetween());
+            }
+            await sleep(1200);
+            appendLine('Welcome Home!');
+        };
+
+        run();
+    };
+
+    startDebugLogSequence();
 
     const lenis = new Lenis();
     lenis.on("scroll", ScrollTrigger.update);

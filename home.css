@@ -84,12 +84,43 @@
     overflow: visible;
     max-height: 95svh; /* prevent overly tall intro on very large viewports */
 }
+
+.intro-bubbles-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0.5;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.intro-bubbles-layer canvas {
+    display: block;
+}
+
+.intro-visualiser {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8rem;
+    z-index: 1;
+    pointer-events: none;
+}
+
+#introVisualiserCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    transform: scaleY(-1);
+    transform-origin: center;
+}
+
 .intro::before {
     content: '';
     position: absolute;
     inset: 0;
-    /* correct path to the asset in images/ */
-    background: center / cover no-repeat url('images/screenshot.png');
+    background: center / cover no-repeat var(--intro-bg-image-current, url('images/introBgDay.png'));
     mix-blend-mode: overlay; /* blend with the video beneath */
     opacity: 0.98;
     pointer-events: none;
@@ -100,10 +131,26 @@
     mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0, rgba(0,0,0,1) calc(100% - var(--intro-fade)), rgba(0,0,0,0) 100%);
 }
 
+.intro::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: center / cover no-repeat var(--intro-bg-image-next, var(--intro-bg-image-current, url('images/introBgDay.png')));
+    mix-blend-mode: overlay; /* blend with the video beneath */
+    opacity: var(--intro-bg-next-opacity, 0);
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 1.2s ease;
+    /* fade out at bottom so the video bleed shows through smoothly */
+    --intro-fade: 8vh;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0, rgba(0,0,0,1) calc(100% - var(--intro-fade)), rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0, rgba(0,0,0,1) calc(100% - var(--intro-fade)), rgba(0,0,0,0) 100%);
+}
+
 /* ensure intro content sits above its background pseudo-element */
-.intro > * {
+.intro > *:not(.intro-bubbles-layer):not(.intro-visualiser) {
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 /* Avoid autoplay heavy video on small screens — hide video under a small viewport */
@@ -143,18 +190,60 @@ html, body {
     z-index: 10001;
     pointer-events: none;
     display: flex;
-    align-items: center;
-    gap: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
     /* Start hidden; JS will position it */
     opacity: 0;
     transform-origin: center center;
 }
 
-#glass-icon-start,
+.glass-icon-top-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.glass-icon-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    width: 100%;
+    align-self: center;
+}
+
+.glass-icon-bottom-row img {
+    width: auto;
+    height: 7vh;
+    object-fit: contain;
+}
+
+#glass-icon-start{
+    height: 24vh;
+    width: auto;
+    display: block;
+    margin-top: -1vh;
+}
+
+.glass-icon-right-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: -1vh;
+}
+
 #glass-icon-horizon {
     height: 10vh;
     width: auto;
     display: block;
+}
+
+#glass-icon-version {
+    height: 4vh;
+    width: auto;
+    display: block;
+    margin-top: -2.2vh;
 }
 
 #page-fade-overlay {
@@ -226,13 +315,15 @@ img {
 }
 
 .col h2 {
-    color: cyan;
+    color: #0689e4;
     width: 60%;
 }
 
 .col p {
-    color: red;
+    color: #6b8f25;
     width: 60%;
+    font-size: 1.2rem;
+    line-height: 1em;
 }
 
 .col-2 {
