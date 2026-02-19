@@ -1,3 +1,4 @@
+// Intro fade/visibility handling is performed in the introSection scope below.
 // Use globals provided by the CDN scripts included in `home.html`:
 // - `gsap` (GSAP core)
 // - `ScrollTrigger` (GSAP plugin)
@@ -488,6 +489,42 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         scheduleNextCycle();
+
+        // Visibility & focus handling to avoid a stuck --intro-bg-next-opacity
+        // (timers and rAF can be throttled while the page is hidden; this ensures
+        // the visual state and internal flags are reconciled when the page
+        // becomes visible again).
+        const resetIntroFadeIfStuck = () => {
+            try {
+                const raw = getComputedStyle(introSection).getPropertyValue('--intro-bg-next-opacity') || '0';
+                const val = parseFloat(raw.trim());
+                if (!Number.isFinite(val) || val > 0) {
+                    if (fadeTimeoutId !== null) { window.clearTimeout(fadeTimeoutId); fadeTimeoutId = null; }
+                    introSection.style.setProperty('--intro-bg-next-opacity', '0');
+                    isFading = false;
+                }
+            } catch (err) {
+                // defensive - if anything goes wrong, ensure we clear visual state
+                introSection.style.setProperty('--intro-bg-next-opacity', '0');
+                isFading = false;
+            }
+        };
+
+        window.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // pause/clear timers while hidden to avoid partially-applied fades
+                if (cycleTimeoutId !== null) { window.clearTimeout(cycleTimeoutId); cycleTimeoutId = null; }
+                if (fadeTimeoutId !== null) { window.clearTimeout(fadeTimeoutId); fadeTimeoutId = null; }
+                isFading = false;
+            } else {
+                // on resume, reconcile any stuck visual/internal state and restart the cycle
+                resetIntroFadeIfStuck();
+                scheduleNextCycle();
+            }
+        });
+
+        // some browsers fire focus but not visibilitychange — handle that too
+        window.addEventListener('focus', () => { resetIntroFadeIfStuck(); scheduleNextCycle(); });
     }
     
     // Fade out the white overlay, then bounce the glass in from below

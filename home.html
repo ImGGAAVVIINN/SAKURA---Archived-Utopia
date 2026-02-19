@@ -343,7 +343,7 @@
                 </div>
                 <div class="col-img col-img-2">
                     <div class="col-img-wrapper">
-                        <img src="https://preview.redd.it/stalin-watching-nikita-khrushchev-denouncing-his-cult-of-v0-pydvh3wr2bdg1.png?width=1080&crop=smart&auto=webp&s=4b544fe920286bc02531bdac8d7ab0b47dd6c2ec" alt="">
+                        <img src="/images/hsrStation.png" alt="">
                     </div>
                 </div>
             </div>
@@ -366,7 +366,7 @@
             <div class="col col-4">
                 <div class="col-img">
                     <div class="col-img-wrapper">
-                        <img src="images/mobFarmGarden.png"">
+                        <img src="images/autoSmelter.png">
                     </div>
                 </div>                
             </div>
@@ -641,6 +641,47 @@ OS: Horizon OS 1.0
             }
         };
 
+        // Scroll-lock helpers — lock page scroll while the welcome runs (prevents wheel/touch/keyboard)
+        let _welcomeScrollLock = { locked: false, y: 0 };
+        function _preventScrollDefault(e) { e.preventDefault(); }
+        function _keydownScrollHandler(e) {
+            const keys = [' ', 'PageUp', 'PageDown', 'End', 'Home', 'ArrowUp', 'ArrowDown'];
+            if (keys.includes(e.key) || [32,33,34,35,36,38,40].includes(e.keyCode)) {
+                e.preventDefault();
+            }
+        }
+        function disableScroll() {
+            if (_welcomeScrollLock.locked) return;
+            _welcomeScrollLock.locked = true;
+            _welcomeScrollLock.y = window.scrollY || document.documentElement.scrollTop || 0;
+            document.documentElement.style.scrollBehavior = 'auto';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${_welcomeScrollLock.y}px`;
+            document.body.style.left = '0';
+            document.body.style.width = '100%';
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            window.addEventListener('wheel', _preventScrollDefault, { passive: false });
+            window.addEventListener('touchmove', _preventScrollDefault, { passive: false });
+            document.addEventListener('keydown', _keydownScrollHandler, { passive: false });
+        }
+        function enableScroll() {
+            if (!_welcomeScrollLock.locked) return;
+            _welcomeScrollLock.locked = false;
+            window.removeEventListener('wheel', _preventScrollDefault);
+            window.removeEventListener('touchmove', _preventScrollDefault);
+            document.removeEventListener('keydown', _keydownScrollHandler);
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            const y = _welcomeScrollLock.y || 0;
+            window.scrollTo(0, y);
+            document.documentElement.style.scrollBehavior = '';
+        }
+
         // Welcome splash screen logic
         window.addEventListener('load', function() {
             const welcomeSplash = document.getElementById('welcome-splash');
@@ -654,8 +695,7 @@ OS: Horizon OS 1.0
             welcomeAudio.volume = 0.3;
 
             // Prevent scrolling during welcome screen and hide scrollbar
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
+            disableScroll();
 
             // Hide taskbar during welcome
             if (taskbar) {
@@ -684,8 +724,7 @@ OS: Horizon OS 1.0
                         welcomeProgressBar.style.display = 'none';
                     }
                     // Re-enable scrolling
-                    document.body.style.overflow = '';
-                    document.documentElement.style.overflow = '';
+                    enableScroll();
                     // Ensure we're at the top
                     window.scrollTo(0, 0);
                     // Show taskbar after scrolling to top

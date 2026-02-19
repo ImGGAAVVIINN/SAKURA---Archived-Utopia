@@ -725,19 +725,16 @@
       textElems.forEach(el => (el.style.color = '#111'));
     }
 
-    // If first visit, show the sound warning first, then continue
+    // Show the audio notice overlay on every visit; play the intro video only on first visit.
     function continueApp() {
       if (isMobileDevice) showMobileBlockScreenScoped(); else startEverything();
     }
 
-    if (isFirstVisit) {
-      showSoundWarning(continueApp);
-    } else {
-      continueApp();
-    }
+    // always show the audio notice; pass `isFirstVisit` so the intro video can be gated
+    showSoundWarning(continueApp, isFirstVisit);
 
-    // Sound warning dialog shown on first visit (top-level)
-    function showSoundWarning(onDone) {
+    // Sound warning / audio-notice dialog (always shown). `playIntro` controls whether the intro video runs.
+    function showSoundWarning(onDone, playIntro = false) {
       // ensure 7.css scoped stylesheet is loaded so the dialog uses Win7 styles
       const scopedHref = 'https://unpkg.com/7.css/dist/7.scoped.css';
       const hasScoped = [...document.styleSheets].some(s => s.href && s.href.includes('7.css/dist/7.scoped.css'));
@@ -808,7 +805,13 @@
             // remove the audio notice overlay
             overlay.remove();
 
-            // play intro video fully (user-initiated click — should be allowed to play)
+            // If this is NOT the user's first visit, skip the intro video and continue immediately.
+            if (!playIntro) {
+              if (onDone) onDone();
+              return;
+            }
+
+            // play intro video fully (user-initiated click — allowed to play on first visit)
             const vOverlay = document.createElement('div');
             vOverlay.style.position = 'fixed';
             vOverlay.style.inset = '0';
