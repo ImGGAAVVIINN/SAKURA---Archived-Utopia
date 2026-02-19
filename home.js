@@ -373,7 +373,13 @@ const initWelcomeSplashGlass = () => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    gsap.registerPlugin(ScrollTrigger, SplitText);
+    gsap.registerPlugin(ScrollTrigger);
+    const hasSplitText = typeof window.SplitText === "function";
+    if (hasSplitText) {
+        gsap.registerPlugin(SplitText);
+    } else {
+        console.warn("SplitText plugin is unavailable; text split animations are disabled.");
+    }
     initWelcomeSplashGlass();
 
     const introSection = document.querySelector('.intro');
@@ -579,6 +585,7 @@ document.addEventListener("DOMContentLoaded", () => {
     gsap.ticker.lagSmoothing(0);
 
     const initTextSplit = () => {
+        if (!hasSplitText) return;
         // col-3 uses h2 elements for headings — include h2 here (was h1) so SplitText
         // applies to both headings and paragraphs inside .col-3
         const textElements = document.querySelectorAll(".col-3 h2, .col-3 p");
