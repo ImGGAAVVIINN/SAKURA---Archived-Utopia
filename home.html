@@ -965,40 +965,188 @@ OS: Horizon OS 1.0
             window.startWelcome = startWelcome;
             window.finishWelcome = finishWelcome;
 
-            // On load, show the pre-welcome page and wire its controls; it controls when the welcome runs
-            window.addEventListener('load', function() {
-                const pre = document.getElementById('pre-welcome-page');
-                const cont = document.getElementById('pre-welcome-continue');
-                const skip = document.getElementById('pre-welcome-skip');
+                        // Insert original sound-warning overlay and gate the pre-welcome page behind it.
+                        // Cookie check to gate intro video on first visit (copied from index.html)
+                        const isFirstVisit = !document.cookie.includes("visited=true");
+                        if (isFirstVisit) {
+                                document.cookie = "visited=true; max-age=31536000; path=/"; // Expires in 1 year
+                        }
 
-                // Hide the actual welcome canvas/progress until user moves past pre-welcome
-                if (welcomeSplash) {
-                    welcomeSplash.style.display = 'none';
-                    welcomeSplash.style.opacity = '1';
-                }
-                if (welcomeProgressBar) {
-                    welcomeProgressBar.style.display = 'none';
-                    welcomeProgressBar.style.opacity = '1';
-                }
+                        // Original showSoundWarning implementation (copied verbatim from index.html)
+                        function showSoundWarning(onDone, playIntro = false) {
+                            const scopedHref = 'https://unpkg.com/7.css/dist/7.scoped.css';
+                            const hasScoped = [...document.styleSheets].some(s => s.href && s.href.includes('7.css/dist/7.scoped.css'));
 
-                if (pre) {
-                    pre.style.display = 'flex';
-                    if (cont) cont.addEventListener('click', function() {
-                        pre.style.display = 'none';
-                        startWelcome();
-                    });
-                    if (skip) skip.addEventListener('click', function() {
-                        pre.style.display = 'none';
-                        // mark welcome as started so it won't run later
-                        window._welcomeStarted = true;
-                        // directly finish welcome state without playing audio
-                        finishWelcome();
-                    });
-                } else {
-                    // fallback: if pre-welcome missing, start welcome immediately
-                    startWelcome();
-                }
-            });
+                            const createOverlay = () => {
+                                const overlay = document.createElement('div');
+                                overlay.style.position = 'fixed';
+                                overlay.style.inset = '0';
+                                overlay.style.zIndex = '2147483650';
+                                overlay.style.display = 'flex';
+                                overlay.style.alignItems = 'center';
+                                overlay.style.justifyContent = 'center';
+                                overlay.style.background = 'transparent';
+
+                                const bgVideo = document.createElement('video');
+                                bgVideo.src = 'videos/bg.mp4';
+                                bgVideo.autoplay = true;
+                                bgVideo.muted = true;
+                                bgVideo.loop = true;
+                                bgVideo.playsInline = true;
+                                bgVideo.preload = 'auto';
+                                bgVideo.style.position = 'absolute';
+                                bgVideo.style.inset = '0';
+                                bgVideo.style.width = '100%';
+                                bgVideo.style.height = '100%';
+                                bgVideo.style.objectFit = 'cover';
+                                bgVideo.style.zIndex = '2147483650';
+                                bgVideo.style.opacity = '1';
+                                bgVideo.style.filter = 'brightness(.46)';
+
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'win7';
+                                wrapper.style.maxWidth = '560px';
+                                wrapper.style.width = 'min(95%, 560px)';
+                                wrapper.style.zIndex = '2147483651';
+                                wrapper.innerHTML = `
+                                    <div class="window active">
+                                        <div class="title-bar">
+                                            <div class="title-bar-text">Audio notice</div>
+                                        </div>
+                                        <div class="window-body has-space">
+                                            <div style="display:flex; gap:1rem; align-items:center;">
+                                                <img src="/images/icons/music.webp" alt="Audio" style="width:96px;height:96px;object-fit:contain;" />
+                                                <div>
+                                                    <p style="margin:0; color:#111;">This website plays audio. Please lower your volume if its on max, or unmute your device if its muted, before continuing.</p>
+                                                </div>
+                                            </div>
+                                            <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:1rem;">
+                                                <button id="sound-ok" class="default">Got it</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+
+                                overlay.appendChild(bgVideo);
+                                overlay.appendChild(wrapper);
+                                bgVideo.play().catch(e => console.log('bg.mp4 autoplay blocked or failed:', e));
+                                document.body.appendChild(overlay);
+
+                                const ok = overlay.querySelector('#sound-ok');
+                                if (ok) {
+                                    ok.addEventListener('click', async () => {
+                                        overlay.remove();
+
+                                        if (!playIntro) {
+                                            if (onDone) onDone();
+                                            return;
+                                        }
+
+                                        const vOverlay = document.createElement('div');
+                                        vOverlay.style.position = 'fixed';
+                                        vOverlay.style.inset = '0';
+                                        vOverlay.style.zIndex = '2147483660';
+                                        vOverlay.style.display = 'flex';
+                                        vOverlay.style.alignItems = 'center';
+                                        vOverlay.style.justifyContent = 'center';
+                                        vOverlay.style.background = '#000';
+
+                                        const video = document.createElement('video');
+                                        video.src = 'videos/weWereLiedTo.mp4';
+                                        video.autoplay = false;
+                                        video.playsInline = true;
+                                        video.controls = false;
+                                        video.preload = 'auto';
+                                        video.volume = 0.25;
+                                        video.style.maxWidth = '100%';
+                                        video.style.maxHeight = '100%';
+                                        video.style.width = '100%';
+                                        video.style.height = '100%';
+
+                                        vOverlay.appendChild(video);
+                                        vOverlay.style.background = '#000';
+                                        vOverlay.style.transition = '';
+                                        document.body.appendChild(vOverlay);
+
+                                        try {
+                                            await video.play();
+                                        } catch (err) {
+                                            console.log('Intro video play failed or was blocked:', err);
+                                            vOverlay.remove();
+                                            if (onDone) onDone();
+                                            return;
+                                        }
+
+                                        let fadeStarted = false;
+                                        const fadeStart = 46.67;
+                                        const fadeDuration = 2;
+                                        const onTime = () => {
+                                            const t = video.currentTime;
+                                            if (!fadeStarted && t >= fadeStart) {
+                                                fadeStarted = true;
+                                                vOverlay.style.transition = `background ${fadeDuration}s linear`;
+                                                vOverlay.style.background = '#fff';
+                                            }
+                                        };
+                                        video.addEventListener('timeupdate', onTime);
+
+                                        video.addEventListener('ended', () => {
+                                            video.removeEventListener('timeupdate', onTime);
+                                            vOverlay.remove();
+                                            if (onDone) onDone();
+                                        }, { once: true });
+                                    });
+
+                                    ok.addEventListener('keydown', (e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            ok.click();
+                                        }
+                                    });
+                                }
+                            };
+
+                            if (hasScoped) {
+                                createOverlay();
+                            } else {
+                                const link = document.createElement('link');
+                                link.rel = 'stylesheet';
+                                link.href = scopedHref;
+                                link.crossOrigin = 'anonymous';
+                                let called = false;
+                                link.onload = () => { if (!called) { called = true; createOverlay(); console.log('7.scoped.css loaded for sound dialog'); } };
+                                link.onerror = () => { if (!called) { called = true; console.log('Failed to load 7.scoped.css for sound dialog — falling back'); createOverlay(); } };
+                                setTimeout(() => { if (!called) { called = true; console.log('7.scoped.css load timeout — showing dialog'); createOverlay(); } }, 800);
+                                document.head.appendChild(link);
+                            }
+                        }
+
+                        // On load, show the sound-warning first and then the pre-welcome page
+                        window.addEventListener('load', function() {
+                                const pre = document.getElementById('pre-welcome-page');
+                                const showPre = () => {
+                                        // Hide the actual welcome canvas/progress until user moves past pre-welcome
+                                        if (welcomeSplash) {
+                                                welcomeSplash.style.display = 'none';
+                                                welcomeSplash.style.opacity = '1';
+                                        }
+                                        if (welcomeProgressBar) {
+                                                welcomeProgressBar.style.display = 'none';
+                                                welcomeProgressBar.style.opacity = '1';
+                                        }
+                                        if (pre) {
+                                                pre.style.display = 'flex';
+                                        }
+                                };
+
+                                // showSoundWarning will call showPre when user clicks 'Got it' (and playIntro if first visit)
+                                try {
+                                        showSoundWarning(showPre, isFirstVisit);
+                                } catch (e) {
+                                        // fallback: just show pre-welcome
+                                        showPre();
+                                }
+                        });
         })();
 
         // Play/Pause and skip button functionality
