@@ -26,6 +26,193 @@
         <!-- White fade-in overlay -->
         <div id="page-fade-overlay"></div>
         
+                <!-- Pre-Welcome Page (merged index content: HTML + CSS + JS) -->
+                <div id="pre-welcome-page" style="position: fixed; inset: 0; z-index: 10010; display: none; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.8)); color: white;">
+                    <div style="width:100%; max-width:1100px; margin:auto;">
+                        <!-- Embedded styles from style.css (scoped inside page but global rules apply) -->
+                        <style>
+/* BEGIN embedded style.css (partial/essential) */
+@import url('https://unpkg.com/normalize.css') layer(normalize);
+
+@font-face {
+    font-family: 'Frutiger';
+    src: url('fonts/frutiger/Frutiger.ttf') format('truetype');
+}
+
+/* Important styles copied from style.css to render the pre-welcome "index" page */
+body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
+.lights-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0b0b0b;
+    z-index: -1;
+    overflow: hidden;
+}
+.light {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0;
+    animation: fadeInOut 4s ease-in-out infinite;
+}
+.light.blue { background: radial-gradient(circle, rgba(0, 120, 212, 0.7) 0%, transparent 70%); }
+.light.green { background: radial-gradient(circle, rgba(16, 137, 62, 0.7) 0%, transparent 70%); }
+.light.pink { background: radial-gradient(circle, rgba(232, 17, 127, 0.7) 0%, transparent 70%); }
+.arrow { font-family: 'Frutiger', sans-serif; font-size: 20px; color:#fff; }
+
+@keyframes fadeInOut { 0%,100%{opacity:0;transform:scale(0.8);}50%{opacity:1;transform:scale(1);} }
+
+.liquid-toggle { --height:30; --width:100; height: calc(var(--height)*1px); width: calc(var(--width)*1px); border-radius:3px; border:1px solid #8e8f8f; padding:0; cursor:pointer; position:relative; overflow:visible; background:#ddd; }
+.liquid-toggle .indicator { position:absolute; top:50%; left:50%; translate:-50% -50%; height:100%; width:100%; background:#00d82c; border-radius:3px; }
+.liquid-toggle.pre-pop { opacity:0; transform: translate3d(0,24px,0) scale(.6); filter:blur(6px); pointer-events:none; }
+/* Ensure the toggle is visible while inside the pre-welcome merged page (override the hidden pre-pop state) */
+#pre-welcome-page .liquid-toggle.pre-pop { opacity: 1 !important; transform: none !important; filter: none !important; pointer-events: auto !important; }
+.liquid-toggle.pop-in { animation-name: jello-pop; animation-duration: 900ms; animation-fill-mode:both; }
+@keyframes jello-pop { 0%{transform:translate3d(0,24px,0) scale(.6);opacity:0;filter:blur(6px);} 40%{transform:translate3d(0,-8px,0) scale(1.18);opacity:1;} 100%{transform:none;opacity:1;filter:none;} }
+
+.white-flash-overlay { position: fixed; inset: 0; background: #fff; z-index: 99999; pointer-events: none; clip-path: circle(0px at 0px 0px); transition: clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear; opacity:1; }
+
+.arrow--main { position: absolute; top: 1.5rem; left: 1.5rem; color:#fff; opacity:0.9; }
+
+/* END embedded style.css */
+                        </style>
+
+                        <!-- Merged HTML (from index.html) -->
+                        <div class="lights-background" id="lightsContainer"></div>
+                        <main style="position:relative; z-index:10011; display:flex; align-items:center; justify-content:center; height:80vh;">
+                            <div class="arrow arrow--main"> <span>Open the portal?</span> </div>
+                            <button aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop" id="merged-toggle">
+                                <div class="indicator indicator--masked"><div class="mask"></div></div>
+                                <div class="indicator__liquid"><div class="shadow"></div><div class="wrapper"><div class="liquids"></div></div><div class="cover"></div></div>
+                            </button>
+                        </main>
+
+                        <svg class="sr-only" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <!-- minimal defs placeholder -->
+                            </defs>
+                        </svg>
+
+                        <!-- Draggable plugin required by the merged script -->
+                        <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+
+                        <!-- Inline merged/converted scripts.js + index glue -->
+                        <script>
+                            (function(){
+                                // small helper to hide the pre-welcome and start the welcome in the host page
+                                function hidePreWelcomeAndStartWelcome() {
+                                    try {
+                                        const pre = document.getElementById('pre-welcome-page');
+                                        if (pre) pre.style.display = 'none';
+                                    } catch(e){}
+                                    // prefer calling global start if exposed
+                                    if (window.startWelcome) return window.startWelcome();
+                                    // fallback: dispatch click on the host continue button (if present)
+                                    const cont = document.getElementById('pre-welcome-continue');
+                                    if (cont) { cont.click(); return; }
+                                    // last resort: set welcome started flag and call finish if available
+                                    window._welcomeStarted = true;
+                                    if (window.finishWelcome) window.finishWelcome();
+                                }
+
+                                // Simplified interaction logic inspired by scripts.js
+                                const toggle = document.getElementById('merged-toggle');
+                                const gsapGlobal = window.gsap;
+                                if (!toggle) return;
+
+                                // Make sure the toggle becomes visible and animates once the pre-welcome page is shown
+                                (function ensureToggleVisible() {
+                                    const pre = document.getElementById('pre-welcome-page');
+                                    const tryShow = () => {
+                                        if (pre && getComputedStyle(pre).display !== 'none') {
+                                            try { toggle.classList.remove('pre-pop'); } catch(e){}
+                                            try { toggle.classList.add('pop-in'); } catch(e){}
+                                            toggle.style.pointerEvents = 'auto';
+                                            return;
+                                        }
+                                        // retry until visible (small delay)
+                                        setTimeout(tryShow, 80);
+                                    };
+                                    tryShow();
+                                })();
+
+                                function triggerWhiteFlash(activate = true) {
+                                    // create overlay
+                                    const overlay = document.createElement('div');
+                                    overlay.className = 'white-flash-overlay';
+                                    // place overlay above everything inside pre-welcome
+                                    overlay.style.zIndex = 2147483647;
+                                    document.body.appendChild(overlay);
+
+                                    // compute center near toggle
+                                    const rect = toggle.getBoundingClientRect();
+                                    const cx = Math.round(rect.left + rect.width/2);
+                                    const cy = Math.round(rect.top + rect.height/2);
+                                    const dx = Math.max(cx, window.innerWidth - cx);
+                                    const dy = Math.max(cy, window.innerHeight - cy);
+                                    const radius = Math.ceil(Math.sqrt(dx*dx + dy*dy));
+
+                                    // force paint then animate
+                                    overlay.getBoundingClientRect();
+                                    requestAnimationFrame(() => {
+                                        overlay.style.clipPath = `circle(${radius}px at ${cx}px ${cy}px)`;
+                                        overlay.style.opacity = '1';
+                                    });
+
+                                    let done = false;
+                                    overlay.addEventListener('transitionend', function() {
+                                        if (done) return; done = true;
+                                        // at the end of white flash, remove overlay and hide pre-welcome
+                                        try { overlay.remove(); } catch(e) {}
+                                        hidePreWelcomeAndStartWelcome();
+                                    }, { once: true });
+
+                                    // timeout fallback
+                                    setTimeout(() => { if (!done) { done = true; try{ overlay.remove(); }catch(e){} hidePreWelcomeAndStartWelcome(); } }, 800);
+                                }
+
+                                // small toggle animation: set aria-pressed then trigger white flash
+                                function toggleState() {
+                                    const pressed = toggle.getAttribute('aria-pressed') === 'true';
+                                    toggle.setAttribute('aria-pressed', (!pressed).toString());
+                                    toggle.classList.remove('pre-pop');
+                                    toggle.classList.add('pop-in');
+                                    // after animation completes, run white flash
+                                    setTimeout(() => {
+                                        triggerWhiteFlash(true);
+                                    }, 520);
+                                }
+
+                                toggle.addEventListener('click', function(){ toggleState(); });
+
+                                // Create ambient lights
+                                const container = document.getElementById('lightsContainer');
+                                if (container) {
+                                    const colors = ['blue','green','pink'];
+                                    function createLight(){
+                                        const light = document.createElement('div');
+                                        light.className = 'light '+colors[Math.floor(Math.random()*colors.length)];
+                                        const size = Math.random()*300+200;
+                                        light.style.width = size+'px'; light.style.height = size+'px';
+                                        light.style.left = Math.random()*100+'%'; light.style.top = Math.random()*100+'%';
+                                        light.style.animationDelay = Math.random()*2+'s'; light.style.animationDuration = (Math.random()*3+3)+'s';
+                                        container.appendChild(light);
+                                        setTimeout(()=> light.remove(), 8000);
+                                    }
+                                    for(let i=0;i<5;i++) setTimeout(createLight, i*300);
+                                    setInterval(createLight, 800);
+                                }
+
+                                // expose trigger for debugging and external use
+                                window.mergedTriggerWhiteFlash = triggerWhiteFlash;
+                            })();
+                        </script>
+                    </div>
+                </div>
+
         <!-- Welcome Splash Screen -->
         <canvas id="welcome-splash" style="position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999;">
                 Your browser does not support canvas.
@@ -682,70 +869,137 @@ OS: Horizon OS 1.0
             document.documentElement.style.scrollBehavior = '';
         }
 
-        // Welcome splash screen logic
-        window.addEventListener('load', function() {
+        // Welcome splash screen logic — controlled via pre-welcome page
+        (function() {
+            // ensure we only run welcome once
+            window._welcomeStarted = window._welcomeStarted || false;
+
             const welcomeSplash = document.getElementById('welcome-splash');
             const welcomeProgressBar = document.getElementById('welcome-progressbar');
-            const welcomeAudio = new Audio('sounds/welcome.mp3');
             const taskbar = document.querySelector('.taskbar-container');
 
-            loadStoredVolume();
-
-            // Set audio volume to be quieter
-            welcomeAudio.volume = 0.3;
-
-            // Prevent scrolling during welcome screen and hide scrollbar
-            disableScroll();
-
-            // Hide taskbar during welcome
-            if (taskbar) {
-                taskbar.style.visibility = 'hidden';
-            }
-
-            // Play the welcome sound
-            welcomeAudio.play().catch(err => console.log('Audio play failed:', err));
-
-            // When audio finishes, scroll to top and hide splash
-            welcomeAudio.addEventListener('ended', function() {
-                // Immediately hide the glass inner image
+            async function finishWelcome() {
                 if (window._dismissGlassImage) window._dismissGlassImage();
 
-                // Fade out the splash screen
-                welcomeSplash.style.transition = 'opacity 0.5s ease-out';
-                welcomeSplash.style.opacity = '0';
+                if (welcomeSplash) {
+                    welcomeSplash.style.transition = 'opacity 0.5s ease-out';
+                    welcomeSplash.style.opacity = '0';
+                }
                 if (welcomeProgressBar) {
                     welcomeProgressBar.style.transition = 'opacity 0.5s ease-out';
                     welcomeProgressBar.style.opacity = '0';
                 }
 
                 setTimeout(async function() {
-                    welcomeSplash.style.display = 'none';
-                    if (welcomeProgressBar) {
-                        welcomeProgressBar.style.display = 'none';
-                    }
-                    // Re-enable scrolling
+                    if (welcomeSplash) welcomeSplash.style.display = 'none';
+                    if (welcomeProgressBar) welcomeProgressBar.style.display = 'none';
                     enableScroll();
-                    // Ensure we're at the top
                     window.scrollTo(0, 0);
-                    // Show taskbar after scrolling to top
-                    if (taskbar) {
-                        taskbar.style.visibility = 'visible';
-                    }
+                    if (taskbar) taskbar.style.visibility = 'visible';
 
-                    // Play background music after welcome finishes
                     await loadPlaylist();
                     if (playlist.length) {
                         loadTrack(0, true);
                     }
                     updateVolumeIcon();
                     setTimeout(function() {
-                        if (window.triggerMusicFlyoutIntro) {
-                            window.triggerMusicFlyoutIntro();
-                        }
+                        if (window.triggerMusicFlyoutIntro) window.triggerMusicFlyoutIntro();
                     }, 2000);
                 }, 500);
+            }
+
+            function startWelcome() {
+                // If the pre-welcome page is still visible, defer starting the welcome
+                const preEl = document.getElementById('pre-welcome-page');
+                try {
+                    if (preEl && getComputedStyle(preEl).display !== 'none') {
+                        // schedule start when pre-welcome is hidden
+                        if (!window._deferredWelcomeObserver) {
+                            window._deferredWelcomeObserver = new MutationObserver((mutations, obs) => {
+                                if (getComputedStyle(preEl).display === 'none') {
+                                    obs.disconnect();
+                                    window._deferredWelcomeObserver = null;
+                                    // call start again now that pre-page is hidden
+                                    startWelcome();
+                                }
+                            });
+                            window._deferredWelcomeObserver.observe(preEl, { attributes: true, attributeFilter: ['style', 'class'] });
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    // defensive: if any error, continue to start
+                }
+
+                if (window._welcomeStarted) return;
+                window._welcomeStarted = true;
+
+                loadStoredVolume();
+
+                const welcomeAudio = new Audio('sounds/welcome.mp3');
+                welcomeAudio.volume = 0.3;
+
+                // Prevent scrolling during welcome screen and hide scrollbar
+                disableScroll();
+
+                // Hide taskbar during welcome
+                if (taskbar) taskbar.style.visibility = 'hidden';
+
+                // Ensure splash elements are visible
+                if (welcomeSplash) {
+                    welcomeSplash.style.display = '';
+                    welcomeSplash.style.opacity = '1';
+                }
+                if (welcomeProgressBar) {
+                    welcomeProgressBar.style.display = '';
+                    welcomeProgressBar.style.opacity = '1';
+                }
+
+                welcomeAudio.play().catch(err => console.log('Audio play failed:', err));
+                welcomeAudio.addEventListener('ended', function() {
+                    finishWelcome();
+                });
+            }
+
+            // expose to global so merged pre-welcome can trigger welcome
+            window.startWelcome = startWelcome;
+            window.finishWelcome = finishWelcome;
+
+            // On load, show the pre-welcome page and wire its controls; it controls when the welcome runs
+            window.addEventListener('load', function() {
+                const pre = document.getElementById('pre-welcome-page');
+                const cont = document.getElementById('pre-welcome-continue');
+                const skip = document.getElementById('pre-welcome-skip');
+
+                // Hide the actual welcome canvas/progress until user moves past pre-welcome
+                if (welcomeSplash) {
+                    welcomeSplash.style.display = 'none';
+                    welcomeSplash.style.opacity = '1';
+                }
+                if (welcomeProgressBar) {
+                    welcomeProgressBar.style.display = 'none';
+                    welcomeProgressBar.style.opacity = '1';
+                }
+
+                if (pre) {
+                    pre.style.display = 'flex';
+                    if (cont) cont.addEventListener('click', function() {
+                        pre.style.display = 'none';
+                        startWelcome();
+                    });
+                    if (skip) skip.addEventListener('click', function() {
+                        pre.style.display = 'none';
+                        // mark welcome as started so it won't run later
+                        window._welcomeStarted = true;
+                        // directly finish welcome state without playing audio
+                        finishWelcome();
+                    });
+                } else {
+                    // fallback: if pre-welcome missing, start welcome immediately
+                    startWelcome();
+                }
             });
-        });
+        })();
 
         // Play/Pause and skip button functionality
         document.addEventListener('DOMContentLoaded', function() {
