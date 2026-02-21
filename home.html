@@ -78,140 +78,1561 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
 .arrow--main { position: absolute; top: 1.5rem; left: 1.5rem; color:#fff; opacity:0.9; }
 
 /* END embedded style.css */
+
+
+@import url('https://unpkg.com/normalize.css') layer(normalize);
+
+@font-face {
+  font-family: 'Frutiger';
+  src: url('fonts/frutiger/Frutiger.ttf') format('truetype');
+}
+
+@layer normalize, base, demo, toggle, transitions, debug;
+
+@layer debug {
+  .arrow {
+    font-family: 'Gloria Hallelujah', cursive;
+    font-size: .875rem;
+    position: absolute;
+    opacity: .6;
+
+    span {
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    &.arrow--main {
+      right: 120%;
+      rotate: -30deg;
+      transition: opacity .26s ease-out;
+      svg {
+        rotate: 10deg;
+        width: 24px;
+        top: 150%;
+        left: 50%;
+        position: absolute;
+        scale: -1 1;
+      }
+      /* use Frutiger for the main "tap and drag" callout */
+    }
+  }
+  [data-debug=true] {
+    main {
+      transform: rotateX(-24deg) rotateY(24deg);
+      transition: transform 0.32s ease-out;
+    }
+    :is(.debug, .knockout--debug) {
+      opacity: 1;
+      transition-property: transform, opacity;
+      transition-duration: 0.32s, 0.32s;
+      transition-delay: 0.4s, 0.4s;
+      transition-timing-function: ease-out, ease-in;
+    }
+    .debug--knockout {
+      transform: translate3d(0, 0, -200px);
+    }
+    .debug--indicator {
+      transform: translate3d(0, 0, 200px);
+    }
+    .debug .arrow {
+      opacity: .6;
+      transition: opacity 0.1s 0.8s ease-out;
+    }
+  }
+  .debug {
+    transform-style: preserve-3d;
+    outline: 4px var(--checked) dashed;
+    outline-offset: 4px;
+    height: 100%;
+    width: 100%;
+    opacity: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    
+    .arrow {
+      transform-style: preserve-3d;
+      position: absolute;
+      left: calc(100% + 2rem);
+      top: 50%;
+      translate: 0 -50%;
+      transform: rotateY(-24deg) rotateX(24deg) translate3d(0, 0, 100px);
+      z-index: 20;
+      opacity: 0;
+    }
+  }
+  .indicator__liquid--debug {
+    pointer-events: none;
+    
+    .wrapper {
+      clip-path: unset;
+    }
+    .liquids {
+      overflow: visible;
+    }
+  }
+
+  :is(.debug) {
+    transition-property: transform, opacity;
+    transition-duration: 0.32s, 0.32s;
+    transition-delay: 0.2s, 0.2s;
+    transition-timing-function: ease-in, ease-out;
+  }
+  
+  main {
+    position: relative;
+    transition: transform 0.32s 0.4s ease-out;
+  }
+
+  main,
+  .liquid-toggle {
+    transform-style: preserve-3d;
+  }
+}
+
+@layer transitions {
+  :root {
+    --transition: 0.2s;
+    --ease: ease-out;
+  }
+  [data-pressed=true] .liquid__track {
+    min-height: 15px;
+  }
+  [data-bounce='true']:has(:is(button:active, [data-pressed="true"])) {
+    --transition: 0.6s;
+    --ease: linear(
+      0 0%,
+      0.6091 3.69%,
+      1.0259 7.24%,
+      1.1733 9.05%,
+      1.283 10.92%,
+      1.3562 12.87%,
+      1.3948 14.95%,
+      1.4014 16.03%,
+      1.3999 17.16%,
+      1.3731 19.64%,
+      1.3202 22.27%,
+      1.1394 29.39%,
+      1.0582 33.17%,
+      0.9943 37.45%,
+      0.9734 39.64%,
+      0.9593 41.92%,
+      0.9505 45.08%,
+      0.9517 48.7%,
+      0.9924 63.02%,
+      1.0046 71.2%,
+      1.0061 78.24%,
+      1 100%
+    );
+  }
+  .indicator--masked .mask {
+    translate: calc(
+        (var(--complete) / 100) * (100cqi - 60cqi - (0 * var(--border)))
+      ) -50%;
+    transition-property: height, width, margin, scale;
+    transition-duration: var(--transition);
+    transition-timing-function: var(--ease);
+    will-change: height, width, margin;
+  }
+  .wrapper {
+    clip-path: inset(0 0 0 0 round 100px);
+    filter: blur(6px);
+    transition: filter var(--transition) var(--ease);
+  }
+  [aria-pressed='true']:not([data-active='true']) .liquid__track {
+    left: calc(var(--border) * 6);
+  }
+  .liquid__track {
+    left: 0;
+    transition-property: height, width, filter, left;
+    transition-duration: var(--transition);
+    transition-timing-function: var(--ease);
+    translate: calc(
+        (var(--complete) / 100) * (100cqi - 100% - (6 * var(--border)))
+      ) -50%;
+  }
+  [data-mapped=false] .liquid__track {
+    transition-property: height, width, filter, left, background;
+    transition-duration: var(--transition), var(--transition), var(--transition), var(--transition), calc(var(--transition) * 0.5);
+    transition-timing-function: var(--ease), var(--ease), var(--ease), var(--ease), ease-out;
+  }
+  .indicator__liquid {
+    translate: calc(
+        (var(--complete) / 100) * (100cqi - 100% - (2 * var(--border)))
+      ) -50%;
+    transition-property: scale;
+    transition-duration: var(--transition);
+    transition-timing-function: var(--ease);
+  }
+  .indicator__liquid :is(.cover, .shadow) {
+    transition: opacity var(--transition) var(--ease);
+  }
+  [data-active='true'] .indicator--masked .mask,
+  .liquid-toggle:active .indicator--masked .mask {
+    height: calc((100% - (2 * var(--border))) * (1.65 - (var(--delta, 0) * 0.025)));
+    width: calc((60% - (2 * var(--border))) * (1.65 + (var(--delta, 0) * 0.025)));
+    margin-left: calc((60% - (2 * var(--border))) * ((.65 + (var(--delta, 0) * 0.025)) * -0.5));
+  }
+  [data-active='true'] .indicator__liquid,
+  .liquid-toggle:active .indicator__liquid {
+    scale: calc(1.65 + (var(--delta, 0) * 0.025)) calc(1.65 - (var(--delta, 0) * 0.025));
+  }
+
+  [data-active='true'] .wrapper,
+  .liquid-toggle:active .wrapper {
+    filter: blur(0px);
+  }
+
+  [data-active='true'] .indicator__liquid .shadow,
+  .liquid-toggle:active .indicator__liquid .shadow {
+    opacity: 1;
+  }
+
+  [data-active='true'] .indicator__liquid .cover,
+  .liquid-toggle:active .indicator__liquid .cover {
+    opacity: 0;
+  }
+
+  [data-active='true'] .indicator__liquid .liquid__track,
+  .liquid-toggle:active .indicator__liquid .liquid__track {
+    left: calc(var(--border) * 3);
+    height: calc((var(--height) * 1px) - (6 * var(--border)));
+  }
+}
+
+@layer toggle {
+  /* Windows 7 Aero CSS Variables */
+  :root {
+    --w7-surface: #f0f0f0;
+    --w7-el-bg: #f2f2f2;
+    --w7-el-bg-s-1: #ebebeb;
+    --w7-el-bg-s-2: #cfcfcf;
+    --w7-el-sd: inset 0 0 0 1px #fffc;
+    --w7-el-bd: #8e8f8f;
+    --w7-el-bd-h: #3c7fb1;
+    --w7-el-bdr: 3px;
+    --w7-pg-bg: #00d82c;
+  }
+
+  [data-mapped=false] .liquid-toggle {
+    --progress: round(down, var(--complete), 85);
+    --checked: hsl(
+      var(--hue, 144),
+      calc((8 + (var(--progress) / 85 * (92))) * 1%),
+      calc((81 - (var(--progress) / 85 * (81 - 43))) * 1%)
+    );
+    .indicator, .indicator--masked {
+      transition: background calc(var(--transition) * 0.5) ease-out;
+    }
+    .liquid__shadow {
+      transition: box-shadow calc(var(--transition) * 0.5) ease-out;
+    }
+  }
+
+  .liquid-toggle {
+    --unchecked: hsl(218, 8%, 81%);
+    --checked: hsl(
+      var(--hue, 144),
+      calc((8 + (var(--complete) / 100 * (92))) * 1%),
+      calc((81 - (var(--complete) / 100 * (81 - 43))) * 1%)
+    );
+    --control: hsl(300, 100%, 100%);
+    --border: 3px;
+    --width: 100;
+    --height: 30;
+    height: calc(var(--height) * 1px);
+    width: calc(var(--width) * 1px);
+    border-radius: var(--w7-el-bdr);
+    border: 1px solid var(--w7-el-bd);
+    padding: 0;
+    cursor: pointer;
+    position: relative;
+    overflow: visible;
+    container-type: inline-size;
+    background: 
+      radial-gradient(circle at 0 50%, #0000001f 5px, transparent 15px),
+      radial-gradient(circle at 100% 50%, #0000001f 5px, transparent 15px),
+      linear-gradient(180deg, #f3f3f3af, #fcfcfcaf 3px, #dbdbdbaf 6px, #cacacaaf 0, #d5d5d5af),
+      #ddd;
+    box-shadow: 
+      inset 0 0 0 1px #f3f3f388,
+      0 0 0 1px #eaeaea88;
+    transition: outline var(--transition) var(--ease), border-color var(--transition) var(--ease);
+    outline-offset: 2px;
+  }
+
+  /* hidden pre-animation state so the control doesn't flash in before pop-in */
+  .liquid-toggle.pre-pop {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(.6) skewX(0) skewY(0);
+    filter: blur(6px);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-toggle.pre-pop {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      pointer-events: auto;
+    }
+  }
+
+  /* Full-screen flash overlay used when switch toggles */
+  .white-flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 99999;
+    pointer-events: none;
+    /* start with a tiny circle at the toggle position */
+    clip-path: circle(0px at 0px 0px);
+    transition: clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear;
+    opacity: 1;
+  }
+
+  /* When page is flashed keep a clean white bg */
+  .is-flashed {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .white-flash-overlay { transition: none; }
+  }
+
+  .liquid-toggle:focus-visible {
+    outline: 4px solid color-mix(in oklch, var(--checked), #0000);
+    border-color: var(--w7-el-bd-h);
+  }
+
+  .liquid-toggle:active {
+    outline: none;
+  }
+  .liquid-toggle[data-active='true']:focus-visible {
+    outline: 4px solid #0000;
+  }
+
+  .indicator {
+    border-radius: var(--w7-el-bdr);
+    pointer-events: none;
+    height: 100%;
+    width: 100%;
+    background-color: var(--w7-pg-bg);
+    background-image: 
+      linear-gradient(180deg, #f3f3f3af, #fcfcfcaf 3px, #dbdbdbaf 6px, transparent 0),
+      radial-gradient(circle at 0 50%, #0000002f 5px, transparent 15px),
+      radial-gradient(circle at 100% 50%, #0000002f 5px, transparent 15px),
+      linear-gradient(180deg, transparent 65%, #ffffff55),
+      linear-gradient(180deg, transparent 6px, #cacaca33 0, #d5d5d533);
+    box-shadow: inset 0 0 0 1px #ffffff1f;
+    position: absolute;
+    top: 50%;
+    scale: 1;
+    left: 50%;
+    translate: -50% -50%;
+    clip-path: inset(0 calc(100% - var(--complete) * 1%) 0 0);
+    transition: clip-path var(--transition) var(--ease);
+  }
+
+  .knockout {
+    height: calc(var(--height) * 1px);
+    width: calc(var(--width) * 1px);
+    border-radius: var(--w7-el-bdr);
+    filter: url(#remove-black);
+    position: absolute;
+    inset: 0;
+    will-change: filter, scale;
+    transform: translate3d(0, 0, 0);
+  }
+  .indicator--masked {
+    background-color: var(--w7-pg-bg);
+    background-image: 
+      linear-gradient(180deg, #f3f3f3af, #fcfcfcaf 2px, #dbdbdbaf 4px, transparent 0),
+      radial-gradient(circle at 0 50%, #0000002f 5px, transparent 15px),
+      radial-gradient(circle at 100% 50%, #0000002f 5px, transparent 15px),
+      linear-gradient(180deg, transparent 65%, #ffffff55),
+      linear-gradient(180deg, transparent 4px, #cacaca33 0, #d5d5d533);
+    box-shadow: inset 0 0 0 1px #ffffff1f;
+    z-index: 12;
+    height: 100%;
+    width: 100%;
+    translate: -50% -50%;
+    container-type: inline-size;
+    border-radius: var(--w7-el-bdr);
+    clip-path: inset(0 calc(100% - var(--complete) * 1%) 0 0);
+    transition: clip-path var(--transition) var(--ease);
+
+    .mask {
+      position: absolute;
+      height: calc(100% - (2 * var(--border)));
+      width: calc(60% - (2 * var(--border)));
+      top: 50%;
+      background: #000;
+      left: var(--border);
+      border-radius: var(--w7-el-bdr);
+    }
+  }
+
+  .wrapper {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--w7-el-bdr);
+  }
+
+  .liquids {
+    position: absolute;
+    inset: 0;
+    transform: translate3d(0, 0, 0);
+    border-radius: var(--w7-el-bdr);
+    overflow: hidden;
+    filter: url(#goo);
+
+    .liquid__shadow {
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0px 0px 2px 2px var(--w7-pg-bg),
+        inset calc(((var(--complete) / 100) * 4px) + -2px) 0px 2px 2px var(--w7-pg-bg);
+      border-radius: var(--w7-el-bdr);
+    }
+
+    .liquid__track {
+      content: '';
+      height: calc((var(--height) * 1px) - (0 * var(--border)));
+      width: calc((var(--width) * 1px) - (0 * var(--border)));
+      background-color: var(--w7-pg-bg);
+      background-image: 
+        linear-gradient(180deg, transparent 65%, #ffffff55),
+        linear-gradient(180deg, transparent 4px, #cacaca33 0, #d5d5d533);
+      border-radius: var(--w7-el-bdr);
+      position: absolute;
+      top: 50%;
+    }
+  }
+
+  .indicator__liquid {
+    position: absolute;
+    height: calc(100% - (2 * var(--border)));
+    width: calc(60% - (2 * var(--border)));
+    container-type: inline-size;
+    top: 50%;
+    background: #0000;
+    left: var(--border);
+    border-radius: var(--w7-el-bdr);
+
+    /* watery jello ripple used on initial pop-in */
+    --jello-duration: 900ms;
+
+  /* Pop-in (watery jello) animation for the switch */
+  @keyframes jello-pop {
+    0% {
+      transform: translate3d(0, 24px, 0) scale(.6) skewX(0deg) skewY(0deg);
+      opacity: 0;
+      filter: blur(6px);
+    }
+    40% {
+      transform: translate3d(0, -8px, 0) scale(1.18) skewX(-3deg) skewY(3deg);
+      opacity: 1;
+      filter: blur(2px);
+    }
+    55% {
+      transform: translate3d(0, 8px, 0) scale(.92) skewX(3deg) skewY(-3deg);
+    }
+    70% {
+      transform: translate3d(0, -4px, 0) scale(1.06) skewX(-1.5deg) skewY(1.5deg);
+    }
+    85% {
+      transform: translate3d(0, 2px, 0) scale(.99) skewX(.6deg) skewY(-.6deg);
+    }
+    100% {
+      transform: translate3d(0, 0, 0) scale(1) skewX(0) skewY(0);
+      opacity: 1;
+      filter: none;
+    }
+  }
+
+  /* small inner ripple to make the liquid wobble */
+  @keyframes liquid-ripple {
+    0% { transform: scaleX(1) scaleY(1); }
+    30% { transform: scaleX(1.08) scaleY(.92); }
+    55% { transform: scaleX(.92) scaleY(1.06); }
+    80% { transform: scaleX(1.03) scaleY(.97); }
+    100% { transform: scaleX(1) scaleY(1); }
+  }
+
+  /* class toggled on page load */
+  .liquid-toggle.pop-in {
+    /* stronger rule to ensure animation applies when toggled from console */
+    animation-name: jello-pop !important;
+    animation-duration: var(--jello-duration) !important;
+    animation-timing-function: cubic-bezier(.22,.9,.33,1) !important;
+    animation-fill-mode: both !important;
+    transform-origin: 50% 50%;
+    /* subtle pop shadow so you can see it triggered even if animation is blocked */
+    box-shadow: 0 24px 48px rgba(0,0,0,0.12) inset, 0 12px 30px rgba(0,0,0,0.12);
+  }
+
+  .liquid-toggle.pop-in .indicator__liquid .liquid__track,
+  .liquid-toggle.pop-in .indicator__liquid .liquid__shadow {
+    animation-name: liquid-ripple !important;
+    animation-duration: var(--jello-duration) !important;
+    animation-timing-function: cubic-bezier(.22,.9,.33,1) !important;
+    animation-fill-mode: both !important;
+    transform-origin: 50% 50%;
+  }
+
+  /* Respect user's reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-toggle.pop-in,
+    .liquid-toggle.pop-in .indicator__liquid .liquid__track,
+    .liquid-toggle.pop-in .indicator__liquid .liquid__shadow {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+
+    .shadow {
+      opacity: 0;
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--w7-el-bdr);
+      box-shadow: 
+        1px -1px 2px hsl(0 0% 100% / 0.5) inset,
+        0px -1px 2px hsl(0 0% 100% / 0.5) inset,
+        -1px -1px 2px hsl(0 0% 100% / 0.5) inset,
+        1px 1px 2px hsl(0 0% 30% / 0.5) inset,
+        -4px 2px 5px -3px hsl(0 0% 30% / 0.25) inset,
+        -1px 1px 3px hsl(0 0% 30% / 0.25) inset,
+        -1px -1px 4px hsl(0 0% 60% / 0.15), 
+        1px 1px 2px hsl(0 0% 30% / 0.15),
+        2px 2px 3px hsl(0 0% 30% / 0.15),
+        -2px -1px 2px hsl(0 0% 100% / 0.25) inset,
+        2px 3px 8px -3px hsl(0 0% 30% / 0.5);
+      z-index: 20;
+    }
+
+    .cover {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAJCAYAAAALpr0TAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAADcSURBVChTNZBLqoUwEEQrURQUxZGCvy24ACfiityJi7tv8GauQoPxk5tquA2RQ9vVVYk6z9NZaxFFEe77htYazjk8z4MwDIVZ+rourOuKaZrwvi+WZcE8z1BKCbPPCjk4DAO2bRP1OI7wLiL6Mbd7J408z1GWpQwWRYGqqiQG+03TgMu0MacfUN4qANmn8UOv9MjW3sKaSm7iIdOSlziOQ3LScd93aPonSYK6riVLlmVo21aYfVqzND9pmqLrOlGT+76XbcxLZkb19/l3fEP+oF0cx8KMEASBsDEGX2/CgZCHkg+8AAAAAElFTkSuQmCC") no-repeat 50%,
+        linear-gradient(180deg, var(--w7-el-bg) 45%, var(--w7-el-bg-s-1) 45%, var(--w7-el-bg-s-2));
+      background-size: auto, 100% 100%;
+      border: 1px solid var(--w7-el-bd);
+      border-radius: var(--w7-el-bdr);
+      box-shadow: var(--w7-el-sd);
+      transition: background var(--transition) var(--ease), border-color var(--transition) var(--ease);
+    }
+
+    &:hover .cover {
+      background: 
+        url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAJCAYAAAALpr0TAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAEnQAABJ0Ad5mH3gAAADcSURBVChTNZBLqoUwEEQrURQUxZGCvy24ACfiityJi7tv8GauQoPxk5tquA2RQ9vVVYk6z9NZaxFFEe77htYazjk8z4MwDIVZ+rourOuKaZrwvi+WZcE8z1BKCbPPCjk4DAO2bRP1OI7wLiL6Mbd7J408z1GWpQwWRYGqqiQG+03TgMu0MacfUN4qANmn8UOv9MjW3sKaSm7iIdOSlziOQ3LScd93aPonSYK6riVLlmVo21aYfVqzND9pmqLrOlGT+76XbcxLZkb19/l3fEP+oF0cx8KMEASBsDEGX2/CgZCHkg+8AAAAAElFTkSuQmCC") no-repeat 50%,
+        linear-gradient(180deg, #eaf6fd 45%, #bee6fd 45%, #a7d9f5);
+      background-size: auto, 100% 100%;
+      border-color: var(--w7-el-bd-h);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --font-size-min: 16;
+    --font-size-max: 20;
+    --font-ratio-min: 1.2;
+    --font-ratio-max: 1.33;
+    --font-width-min: 375;
+    --font-width-max: 1500;
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  [data-theme='light'] {
+    color-scheme: light only;
+  }
+
+  [data-theme='dark'] {
+    color-scheme: dark only;
+  }
+
+  :where(.fluid) {
+    --fluid-min: calc(
+      var(--font-size-min) * pow(var(--font-ratio-min), var(--font-level, 0))
+    );
+    --fluid-max: calc(
+      var(--font-size-max) * pow(var(--font-ratio-max), var(--font-level, 0))
+    );
+    --fluid-preferred: calc(
+      (var(--fluid-max) - var(--fluid-min)) /
+        (var(--font-width-max) - var(--font-width-min))
+    );
+    --fluid-type: clamp(
+      (var(--fluid-min) / 16) * 1rem,
+      ((var(--fluid-min) / 16) * 1rem) -
+        (((var(--fluid-preferred) * var(--font-width-min)) / 16) * 1rem) +
+        (var(--fluid-preferred) * var(--variable-unit, 100vi)),
+      (var(--fluid-max) / 16) * 1rem
+    );
+    font-size: var(--fluid-type);
+  }
+
+  *,
+  *:after,
+  *:before {
+    box-sizing: border-box;
+  }
+
+  body {
+    background: light-dark(#fff, #000);
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    font-family: 'SF Pro Text', 'SF Pro Icons', 'AOS Icons', 'Helvetica Neue',
+      Helvetica, Arial, sans-serif, system-ui;
+  }
+
+  .intro,
+  .sticky-cols,
+  .outro {
+    font-family: 'Frutiger', sans-serif;
+  }
+
+  .bear-link {
+    color: canvasText;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    width: 48px;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    opacity: 0.8;
+  }
+
+  :where(.x-link, .bear-link):is(:hover, :focus-visible) {
+    opacity: 1;
+  }
+
+  .bear-link svg {
+    width: 75%;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+
+
+
+
                         </style>
 
                         <!-- Merged HTML (from index.html) -->
-                        <div class="lights-background" id="lightsContainer"></div>
-                        <main style="position:relative; z-index:10011; display:flex; align-items:center; justify-content:center; height:80vh;">
-                            <div class="arrow arrow--main"> <span>Open the portal?</span> </div>
-                            <button aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop" id="merged-toggle">
-                                <div class="indicator indicator--masked"><div class="mask"></div></div>
-                                <div class="indicator__liquid"><div class="shadow"></div><div class="wrapper"><div class="liquids"></div></div><div class="cover"></div></div>
-                            </button>
-                        </main>
+  <div class="lights-background" id="lightsContainer"></div>
+  
+  <main>
+        <div class="arrow arrow--main">
+          <span>Open the portal?</span>
+        </div>
+  <button id="merged-toggle" aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop">
+          <div class="debug debug--knockout">
+            <div class="arrow">
+              <span>knockout backdrop.</span>
+            </div>
+            <div class="knockout knockout--debug">
+              <div class="indicator indicator--masked">
+                <div class="mask"></div>
+              </div>
+            </div>
+          </div>
+          <div class="knockout">
+            <div class="indicator indicator--masked">
+              <div class="mask"></div>
+            </div>
+          </div>
+          <div class="debug debug--indicator">
+            <div class="arrow">
+              <span>goo window.</span>
+            </div>
+            <div class="indicator__liquid indicator__liquid--debug">
+              <div class="shadow"></div>
+              <div class="wrapper">
+                <div class="liquids">
+                  <div class="liquid__shadow"></div>
+                  <div class="liquid__track"></div>
+                </div>
+              </div>
+              <div class="cover"></div>
+            </div>
+          </div>
+          <div class="indicator__liquid">
+            <div class="shadow"></div>
+            <div class="wrapper">
+              <div class="liquids">
+                <div class="liquid__shadow"></div>
+                <div class="liquid__track"></div>
+              </div>
+            </div>
+            <div class="cover"></div>
+          </div>
+        </button>
+      </main>
+      <svg class="sr-only" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="goo">
+            <feGaussianBlur
+              id="SvgjsFeGaussianBlur1000"
+              result="SvgjsFeGaussianBlur1000"
+              in="SourceGraphic"
+              stdDeviation="13"
+            ></feGaussianBlur>
+            <feColorMatrix
+              id="SvgjsFeColorMatrix1001"
+              result="SvgjsFeColorMatrix1001"
+              in="SvgjsFeGaussianBlur1000"
+              values="
+                  1 0 0 0 0
+                  0 1 0 0 0
+                  0 0 1 0 0
+                  0 0 0 13 -10
+              "
+              type="matrix"
+            ></feColorMatrix>
+            <feComposite
+              id="SvgjsFeComposite1002"
+              result="SvgjsFeComposite1002"
+              in="SvgjsFeColorMatrix1001"
+              operator="atop"
+            ></feComposite>
+          </filter>
+          <filter id="knockout" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              result="knocked"
+              type="matrix"
+              values="1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      -1 -1 -1 1 0"
+            />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="3" intercept="-1" />
+              <feFuncG type="linear" slope="3" intercept="-1" />
+              <feFuncB type="linear" slope="3" intercept="-1" />
+            </feComponentTransfer>
+            <feComponentTransfer>
+              <feFuncR type="table" tableValues="0 0 0 0 0 1 1 1 1 1" />
+              <feFuncG type="table" tableValues="0 0 0 0 0 1 1 1 1 1" />
+              <feFuncB type="table" tableValues="0 0 0 0 0 1 1 1 1 1" />
+            </feComponentTransfer>
+          </filter>
+          <filter id="remove-black" color-interpolation-filters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="1 0 0 0 0
+                        0 1 0 0 0
+                        0 0 1 0 0
+                        -255 -255 -255 0 1"
+              result="black-pixels"
+            />
+            <feMorphology
+              in="black-pixels"
+              operator="dilate"
+              radius="0.5"
+              result="smoothed"
+            />
+            <feComposite in="SourceGraphic" in2="smoothed" operator="out" />
+          </filter>
+        </defs>
+      </svg>
+      
+  <script>
+    // Check if user has visited before using cookies
+    const isFirstVisit = !document.cookie.includes("visited=true");
+    if (isFirstVisit) {
+      console.log("First visit to the site.");
+      document.cookie = "visited=true; max-age=31536000; path=/"; // Expires in 1 year
+    } else {
+      console.log("User has visited the site before.");
+    }
 
-                        <svg class="sr-only" xmlns="http://www.w3.org/2000/svg">
-                            <defs>
-                                <!-- minimal defs placeholder -->
-                            </defs>
-                        </svg>
+    
 
-                        <!-- Draggable plugin required by the merged script -->
-                        <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+  // global flag to mute initial audio if user chose so on first run
+  window.initiallyMuted = false;
 
-                        <!-- Inline merged/converted scripts.js + index glue -->
-                        <script>
-                            (function(){
-                                // small helper to hide the pre-welcome and start the welcome in the host page
-                                function hidePreWelcomeAndStartWelcome() {
-                                    try {
-                                        const pre = document.getElementById('pre-welcome-page');
-                                        if (pre) pre.style.display = 'none';
-                                    } catch(e){}
-                                    // prefer calling global start if exposed
-                                    if (window.startWelcome) return window.startWelcome();
-                                    // fallback: dispatch click on the host continue button (if present)
-                                    const cont = document.getElementById('pre-welcome-continue');
-                                    if (cont) { cont.click(); return; }
-                                    // last resort: set welcome started flag and call finish if available
-                                    window._welcomeStarted = true;
-                                    if (window.finishWelcome) window.finishWelcome();
-                                }
+  // main initialization — wrapped so we can delay it on mobile
+  function startEverything() {
+      const colors = ['blue', 'green', 'pink'];
+      const container = document.getElementById('lightsContainer');
+      
+      function createLight() {
+        const light = document.createElement('div');
+        light.className = `light ${colors[Math.floor(Math.random() * colors.length)]}`;
+        
+        const size = Math.random() * 300 + 200;
+        light.style.width = `${size}px`;
+        light.style.height = `${size}px`;
+        light.style.left = `${Math.random() * 100}%`;
+        light.style.top = `${Math.random() * 100}%`;
+        light.style.animationDelay = `${Math.random() * 2}s`;
+        light.style.animationDuration = `${Math.random() * 3 + 3}s`;
+        
+        container.appendChild(light);
+        
+        setTimeout(() => {
+          light.remove();
+        }, 8000);
+      }
+      
+      setInterval(createLight, 800);
+      
+      for (let i = 0; i < 5; i++) {
+        setTimeout(createLight, i * 300);
+      }
 
-                                // Simplified interaction logic inspired by scripts.js
-                                const toggle = document.getElementById('merged-toggle');
-                                const gsapGlobal = window.gsap;
-                                if (!toggle) return;
+    // Audio setup with Web Audio API
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audio = new Audio('sounds/portal.mp3');
+    audio.loop = true;
+  // small pop sound used for the pop-in animation
+  const popSound = new Audio('sounds/pop.mp3');
+  popSound.preload = 'auto';
+  popSound.volume = 0.9;
+  // helper to play pop sound but avoid duplicates when triggered multiple times quickly
+  let _lastPopSoundTime = 0;
+  function playPopSoundOnce() {
+    const now = performance.now();
+    const delta = now - _lastPopSoundTime;
+    // shorter debounce so legitimate sequential triggers still play
+    if (delta < 300) {
+      console.log('playPopSoundOnce: debounced (delta=' + Math.round(delta) + 'ms)');
+      return;
+    }
+    _lastPopSoundTime = now;
+    if (window.initiallyMuted) { console.log('playPopSoundOnce: initiallyMuted, skipping'); return; }
+    if (!popSound) { console.log('playPopSoundOnce: no popSound available'); return; }
+    try {
+      popSound.currentTime = 0;
+      const p = popSound.play();
+      if (p && p.catch) {
+        p.catch(e => console.log('Pop sound play prevented:', e));
+      }
+      console.log('playPopSoundOnce: play attempted');
+    } catch (e) {
+      console.log('Pop sound error:', e);
+    }
+  }
 
-                                // Make sure the toggle becomes visible and animates once the pre-welcome page is shown
-                                (function ensureToggleVisible() {
-                                    const pre = document.getElementById('pre-welcome-page');
-                                    const tryShow = () => {
-                                        if (pre && getComputedStyle(pre).display !== 'none') {
-                                            try { toggle.classList.remove('pre-pop'); } catch(e){}
-                                            try { toggle.classList.add('pop-in'); } catch(e){}
-                                            toggle.style.pointerEvents = 'auto';
-                                            return;
-                                        }
-                                        // retry until visible (small delay)
-                                        setTimeout(tryShow, 80);
-                                    };
-                                    tryShow();
-                                })();
+  // helper for manual testing
+  window.forcePopSound = () => { playPopSoundOnce(); console.log('forcePopSound called'); };
+    
+    const source = audioContext.createMediaElementSource(audio);
+    const lowShelf = audioContext.createBiquadFilter();
+    const highShelf = audioContext.createBiquadFilter();
+    const gainNode = audioContext.createGain();
+    
+    // Low shelf filter (boost low end)
+    lowShelf.type = 'lowshelf';
+    lowShelf.frequency.value = 200;
+    lowShelf.gain.value = 16; // Boost bass significantly
+    
+    // High shelf filter (reduce high end)
+    highShelf.type = 'highshelf';
+    highShelf.frequency.value = 2000;
+    highShelf.gain.value = -32; // Cut highs for muffled sound
+    
+  // Reduce overall volume for "another room" effect (respect initial mute choice)
+  gainNode.gain.value = window.initiallyMuted ? 0 : 0.4;
+    
+    // Connect the audio graph
+    source.connect(lowShelf);
+    lowShelf.connect(highShelf);
+    highShelf.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Start audio on first user interaction (respect initial mute choice)
+    let audioStarted = false;
+    const startAudio = () => {
+      if (!audioStarted) {
+        audioContext.resume();
+        if (!window.initiallyMuted) audio.play().catch(e => console.log('Audio play failed:', e));
+        audioStarted = true;
+      }
+    };
+    
+    document.addEventListener('click', startAudio, { once: true });
+    document.addEventListener('touchstart', startAudio, { once: true });
+    document.addEventListener('keydown', startAudio, { once: true });
+    
+    // Listen for toggle state changes
+    const toggle = document.querySelector('.liquid-toggle');
+    if (toggle) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'aria-pressed') {
+            const isPressed = toggle.getAttribute('aria-pressed') === 'true';
+            const currentTime = audioContext.currentTime;
+            
+            // Cancel any scheduled changes
+            lowShelf.gain.cancelScheduledValues(currentTime);
+            highShelf.gain.cancelScheduledValues(currentTime);
+            gainNode.gain.cancelScheduledValues(currentTime);
+            
+            // Set current values
+            lowShelf.gain.setValueAtTime(lowShelf.gain.value, currentTime);
+            highShelf.gain.setValueAtTime(highShelf.gain.value, currentTime);
+            gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
+            
+            if (isPressed) {
+              // Transition to normal audio over 2 seconds
+              lowShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
+              highShelf.gain.linearRampToValueAtTime(0, currentTime + 2);
+              gainNode.gain.linearRampToValueAtTime(1, currentTime + 2);
+            } else {
+              // Transition back to muffled over 2 seconds
+              lowShelf.gain.linearRampToValueAtTime(12, currentTime + 2);
+              highShelf.gain.linearRampToValueAtTime(-18, currentTime + 2);
+              gainNode.gain.linearRampToValueAtTime(0.4, currentTime + 2);
+            }
+            // create a bright flash that expands from the toggle
+            triggerWhiteFlash(isPressed);
+          }
+        });
+      });
+      
+      observer.observe(toggle, { attributes: true });
 
-                                function triggerWhiteFlash(activate = true) {
-                                    // create overlay
-                                    const overlay = document.createElement('div');
-                                    overlay.className = 'white-flash-overlay';
-                                    // place overlay above everything inside pre-welcome
-                                    overlay.style.zIndex = 2147483647;
-                                    document.body.appendChild(overlay);
+      // Flash effect: expands white circle from toggle to fill viewport and leave page white
+      function triggerWhiteFlash(activate) {
+        console.log('triggerWhiteFlash called, activate=', activate);
+        // respect reduced motion — if reduced, just set page to white immediately
+        const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const body = document.body;
+        let redirected = false;
+        const redirectAfterFade = () => {
+          // no-op: portal progression is managed by the click handler script
+          // keep the flag in case the animation fires multiple times
+          if (redirected) return;
+          redirected = true;
+        };
 
-                                    // compute center near toggle
-                                    const rect = toggle.getBoundingClientRect();
-                                    const cx = Math.round(rect.left + rect.width/2);
-                                    const cy = Math.round(rect.top + rect.height/2);
-                                    const dx = Math.max(cx, window.innerWidth - cx);
-                                    const dy = Math.max(cy, window.innerHeight - cy);
-                                    const radius = Math.ceil(Math.sqrt(dx*dx + dy*dy));
+        if (!activate) {
+          // If turning off, remove flashed state
+          if (body.classList.contains('is-flashed')) {
+            body.classList.remove('is-flashed');
+          }
+          return;
+        }
 
-                                    // force paint then animate
-                                    overlay.getBoundingClientRect();
-                                    requestAnimationFrame(() => {
-                                        overlay.style.clipPath = `circle(${radius}px at ${cx}px ${cy}px)`;
-                                        overlay.style.opacity = '1';
-                                    });
+        if (reduced) {
+          body.classList.add('is-flashed');
+          redirectAfterFade();
+          return;
+        }
 
-                                    let done = false;
-                                    overlay.addEventListener('transitionend', function() {
-                                        if (done) return; done = true;
-                                        // at the end of white flash, remove overlay and hide pre-welcome
-                                        try { overlay.remove(); } catch(e) {}
-                                        hidePreWelcomeAndStartWelcome();
-                                    }, { once: true });
+        // Sound warning dialog shown on first visit
 
-                                    // timeout fallback
-                                    setTimeout(() => { if (!done) { done = true; try{ overlay.remove(); }catch(e){} hidePreWelcomeAndStartWelcome(); } }, 800);
-                                }
+        // compute center of toggle
+        const rect = toggle.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
 
-                                // small toggle animation: set aria-pressed then trigger white flash
-                                function toggleState() {
-                                    const pressed = toggle.getAttribute('aria-pressed') === 'true';
-                                    toggle.setAttribute('aria-pressed', (!pressed).toString());
-                                    toggle.classList.remove('pre-pop');
-                                    toggle.classList.add('pop-in');
-                                    // after animation completes, run white flash
-                                    setTimeout(() => {
-                                        triggerWhiteFlash(true);
-                                    }, 520);
-                                }
+        // compute farthest corner distance
+        const w = Math.max(cx, window.innerWidth - cx);
+        const h = Math.max(cy, window.innerHeight - cy);
+        const radius = Math.hypot(w, h);
 
-                                toggle.addEventListener('click', function(){ toggleState(); });
+        // create overlay (remove existing if any)
+        let overlay = document.querySelector('.white-flash-overlay');
+        if (overlay) overlay.remove();
+        overlay = document.createElement('div');
+        overlay.className = 'white-flash-overlay';
 
-                                // Create ambient lights
-                                const container = document.getElementById('lightsContainer');
-                                if (container) {
-                                    const colors = ['blue','green','pink'];
-                                    function createLight(){
-                                        const light = document.createElement('div');
-                                        light.className = 'light '+colors[Math.floor(Math.random()*colors.length)];
-                                        const size = Math.random()*300+200;
-                                        light.style.width = size+'px'; light.style.height = size+'px';
-                                        light.style.left = Math.random()*100+'%'; light.style.top = Math.random()*100+'%';
-                                        light.style.animationDelay = Math.random()*2+'s'; light.style.animationDuration = (Math.random()*3+3)+'s';
-                                        container.appendChild(light);
-                                        setTimeout(()=> light.remove(), 8000);
-                                    }
-                                    for(let i=0;i<5;i++) setTimeout(createLight, i*300);
-                                    setInterval(createLight, 800);
-                                }
+        // set critical inline styles to avoid depending on external CSS loading
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = '#fff';
+        overlay.style.zIndex = '2147483647';
+        overlay.style.pointerEvents = 'none';
+        overlay.style.opacity = '0';
+        overlay.style.clipPath = `circle(0px at ${cx}px ${cy}px)`;
+        overlay.style.transition = 'clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear';
 
-                                // expose trigger for debugging and external use
-                                window.mergedTriggerWhiteFlash = triggerWhiteFlash;
-                            })();
-                        </script>
+  // append to body for consistent stacking
+  document.body.appendChild(overlay);
+
+        // debug: log overlay presence and computed style
+        console.log('overlay appended:', !!overlay, overlay.getBoundingClientRect());
+        console.log('support clip-path?', CSS && CSS.supports && CSS.supports('clip-path', 'circle(1px at 0 0)'));
+
+        // force paint
+        overlay.getBoundingClientRect();
+
+        // expand to fill and fade in
+        requestAnimationFrame(() => {
+          overlay.style.opacity = '1';
+          // if clip-path isn't supported, fallback to immediate full white
+          if (!(CSS && CSS.supports && CSS.supports('clip-path', 'circle(1px at 0 0)'))) {
+            overlay.style.clipPath = `circle(${Math.ceil(radius)}px at ${cx}px ${cy}px)`;
+            // short timeout to ensure visuals update
+            setTimeout(() => {
+              body.classList.add('is-flashed');
+              redirectAfterFade();
+            }, 50);
+            return;
+          }
+
+          overlay.style.clipPath = `circle(${Math.ceil(radius)}px at ${cx}px ${cy}px)`;
+        });
+
+        let done = false;
+        overlay.addEventListener('transitionend', (ev) => {
+          if (done) return;
+          // accept any transitionend on the overlay; clip-path support varies
+          done = true;
+          body.classList.add('is-flashed');
+          // leave overlay in place so white stays visible until navigation
+          redirectAfterFade();
+        }, { once: true });
+
+        // Non-event fallback: if transitionend never fires, mark flashed after expected duration and redirect
+        const expected = 520; // matches clip-path transition duration
+        setTimeout(() => {
+          if (done) return;
+          done = true;
+          body.classList.add('is-flashed');
+          redirectAfterFade();
+        }, expected + 120);
+      }
+
+      // expose function for manual testing
+      window.triggerWhiteFlash = (activate = true) => triggerWhiteFlash(activate);
+
+    // Load interaction module and any other modules that should run after initialization
+  import('./scripts.js?v=2').catch(e => console.log('Failed to load interactions:', e));
+
+    // Try to autoplay background audio (best-effort). If browser blocks autoplay this will be caught
+    // and audio will still start on first user interaction via startAudio(). We apply a short gain ramp
+    // so the music fades in instead of popping loud.
+    if (!window.initiallyMuted) {
+      (async () => {
+        try {
+          await audioContext.resume();
+          await audio.play();
+          audioStarted = true;
+          const now = audioContext.currentTime;
+          // start from 0 then ramp to the target level over 2 seconds for a smooth entrance
+          try {
+            gainNode.gain.cancelScheduledValues(now);
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.08, now + 2);
+          } catch (e) {
+            console.log('Gain scheduling failed:', e);
+          }
+          console.log('Background audio autoplayed');
+        } catch (err) {
+          console.log('Background audio autoplay blocked or failed:', err);
+        }
+      })();
+    }
+
+      // Play watery jello "pop-in" animation on page start.
+      // Schedule it after load (or immediately if already loaded) so CSS and fonts have been applied.
+      const schedulePopIn = () => {
+        // don't run if user prefers reduced motion — but ensure toggle becomes visible
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          toggle.classList.remove('pre-pop');
+          return;
+        }
+        // small delay so browser can paint before animating
+        setTimeout(() => {
+          // prefer the robust trigger that falls back to WAAPI when needed
+          toggle.classList.remove('pre-pop');
+            if (window.triggerJello) {
+              window.triggerJello();
+            } else {
+              toggle.classList.remove('pop-in'); void toggle.offsetWidth; toggle.classList.add('pop-in');
+            }
+            // mark that we triggered the initial pop so defensive checks don't duplicate it
+            toggle.dataset.jelloTriggered = 'true';
+            setTimeout(() => toggle.removeAttribute('data-jello-triggered'), 2500);
+        }, 200);
+      };
+
+      if (document.readyState === 'complete') schedulePopIn();
+      else window.addEventListener('load', schedulePopIn, { once: true });
+
+      // Ensure the toggle isn't left in a broken pre-pop state.
+      // Sometimes when first-run dialogs/videos run, the initial reveal can get skipped —
+      // we defensively reset and retrigger the pop-in a short time after initialization.
+      function ensureToggleHealthy() {
+        const el = document.querySelector('.liquid-toggle');
+        if (!el) return;
+        // don't re-trigger if we already ran the initial jello on load
+        if (el.dataset.jelloTriggered === 'true') return;
+        // Make sure it's visible and interactive
+        el.classList.remove('pre-pop');
+        el.style.opacity = '';
+        el.style.transform = '';
+        // Ensure aria attribute exists
+        if (!el.hasAttribute('aria-pressed')) el.setAttribute('aria-pressed', 'false');
+
+        // Try to trigger the pop-in robustly
+        if (window.triggerJello) {
+          try { window.triggerJello(); } catch (e) { /* ignore */ }
+        } else {
+          el.classList.remove('pop-in'); void el.offsetWidth; el.classList.add('pop-in');
+        }
+
+        // Remove lingering animation class after a safe timeout
+        setTimeout(() => {
+          el.classList.remove('pop-in');
+        }, 1600);
+      }
+
+      // Run defensive check shortly after everything initializes and also expose for debugging
+      setTimeout(ensureToggleHealthy, 600);
+      window.ensureToggleHealthy = ensureToggleHealthy;
+
+  // ensure pre-pop is cleared if any animation starts
+  toggle.addEventListener('animationstart', () => {
+    toggle.classList.remove('pre-pop');
+    // ensure pop sound plays once when CSS animation starts
+    playPopSoundOnce();
+  });
+
+      // remove the class after the animation finishes to keep DOM clean
+      toggle.addEventListener('animationend', (e) => {
+        if (e.animationName === 'jello-pop') toggle.classList.remove('pop-in');
+      });
+
+      // Expose a robust trigger for debugging — tries CSS class then falls back to Web Animations
+      window.triggerJello = () => {
+        const el = document.querySelector('.liquid-toggle');
+        if (!el) return console.log('switch not found');
+
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          console.log('prefers-reduced-motion: reduce — skipping animation');
+          return;
+        }
+
+  // ensure element isn't stuck hidden
+  el.classList.remove('pre-pop');
+        // ensure element isn't stuck hidden
+        el.classList.remove('pre-pop');
+        // retrigger CSS animation
+        el.classList.remove('pop-in');
+        void el.offsetWidth; // force reflow
+        el.classList.add('pop-in');
+
+        // play pop sound (debounced) when animation starts
+        playPopSoundOnce();
+
+        const cssAnim = getComputedStyle(el).animationName;
+        if (cssAnim && cssAnim !== 'none') {
+          console.log('CSS animation applied:', cssAnim);
+          return;
+        }
+
+        // Fallback: use Web Animations API for visible effect
+        console.log('CSS animation not applied; using Web Animations fallback');
+        const duration = 900;
+        const easing = 'cubic-bezier(.22,.9,.33,1)';
+
+        const jelloFrames = [
+          { transform: 'translate3d(0,24px,0) scale(.6) skewX(0) skewY(0)', opacity: 0, filter: 'blur(6px)' },
+          { offset: 0.4, transform: 'translate3d(0,-8px,0) scale(1.18) skewX(-3deg) skewY(3deg)', opacity: 1, filter: 'blur(2px)' },
+          { offset: 0.55, transform: 'translate3d(0,8px,0) scale(.92) skewX(3deg) skewY(-3deg)' },
+          { offset: 0.7, transform: 'translate3d(0,-4px,0) scale(1.06) skewX(-1.5deg) skewY(1.5deg)' },
+          { offset: 0.85, transform: 'translate3d(0,2px,0) scale(.99) skewX(.6deg) skewY(-.6deg)' },
+          { transform: 'translate3d(0,0,0) scale(1) skewX(0) skewY(0)', opacity: 1, filter: 'none' }
+        ];
+
+        el.animate(jelloFrames, { duration, easing, fill: 'forwards' });
+
+        // play pop sound (debounced) for WAAPI fallback as well
+        playPopSoundOnce();
+
+        const inner = el.querySelector('.liquid__track');
+        if (inner) {
+          const ripple = [
+            { transform: 'scaleX(1) scaleY(1)' },
+            { offset: 0.3, transform: 'scaleX(1.08) scaleY(.92)' },
+            { offset: 0.55, transform: 'scaleX(.92) scaleY(1.06)' },
+            { offset: 0.8, transform: 'scaleX(1.03) scaleY(.97)' },
+            { transform: 'scaleX(1) scaleY(1)' }
+          ];
+          inner.animate(ripple, { duration, easing, fill: 'forwards' });
+        }
+      };
+      }
+      
+    }
+
+    // Detect mobile devices and show a scoped Win7-styled overlay if mobile
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    function showMobileBlockScreenScoped() {
+      // ensure scoped stylesheet is loaded (safe to add globally because it's scoped under .win7)
+      const scopedHref = 'https://unpkg.com/7.css/dist/7.scoped.css';
+      if (![...document.styleSheets].some(s => s.href && s.href.includes('7.css/dist/7.scoped.css'))) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = scopedHref;
+        link.crossOrigin = 'anonymous';
+        link.onload = () => console.log('7.scoped.css loaded');
+        link.onerror = () => console.log('Failed to load 7.scoped.css');
+        document.head.appendChild(link);
+      }
+
+    // create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'mobile-block-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = '2147483646';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '20px';
+    overlay.style.background = 'transparent';
+
+    // background video for mobile block screen (muted so autoplay is allowed on most browsers)
+    const mbBg = document.createElement('video');
+    mbBg.src = 'videos/bg.mp4';
+    mbBg.muted = true;
+    mbBg.autoplay = true;
+    mbBg.loop = true;
+    mbBg.playsInline = true;
+    mbBg.preload = 'auto';
+    mbBg.style.position = 'absolute';
+    mbBg.style.inset = '0';
+    mbBg.style.width = '100%';
+    mbBg.style.height = '100%';
+    mbBg.style.objectFit = 'cover';
+    mbBg.style.zIndex = '2147483646';
+    mbBg.style.filter = 'brightness(.45)';
+    // attempt to play immediately; muted should allow autoplay on mobile
+    mbBg.play().catch(e => console.log('mobile bg.mp4 autoplay failed:', e));
+
+      // content using .win7 wrapper per 7.css docs
+      const content = document.createElement('div');
+      content.className = 'win7';
+      content.innerHTML = `
+        <div class="window active" style="width: min(560px, 95%);">
+          <div class="title-bar">
+            <div class="title-bar-text">Best viewed on PC</div>
+            <div class="title-bar-controls">
+              <button aria-label="Close" class="is-close" id="mb-close-top"></button>
+            </div>
+          </div>
+          <div class="window-body has-space">
+            <div style="display:flex; gap:1rem; align-items:center;">
+              <img src="/images/icons/pcIcon.png" alt="PC recommended" style="width:64px;height:64px;object-fit:contain;" />
+              <div>
+                <p style="margin:0">This site has audio and advanced animations that work best on a PC. For the full experience, please open the site on a desktop or laptop.</p>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:1rem;">
+              <button id="mb-run" class="default">Run anyway</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+  // append background video then content so dialog sits above
+  overlay.appendChild(mbBg);
+  content.style.zIndex = '2147483647';
+  overlay.appendChild(content);
+      document.body.appendChild(overlay);
+
+      const runBtn = overlay.querySelector('#mb-run');
+      // run button behavior
+      runBtn.addEventListener('click', () => {
+        // stop background video if present
+        try { const v = overlay.querySelector('video'); if (v) { v.pause(); v.src = ''; } } catch (e) {}
+        overlay.remove();
+        startEverything();
+      });
+
+      // make the red X behave the same as Run anyway
+      const closeTop = overlay.querySelector('#mb-close-top');
+      if (closeTop) {
+        closeTop.addEventListener('click', () => {
+          try { const v = overlay.querySelector('video'); if (v) { v.pause(); v.src = ''; } } catch (e) {}
+          overlay.remove();
+          startEverything();
+        });
+      }
+
+      // ensure text and titles are readable (override any dark/white colors)
+      const textElems = overlay.querySelectorAll('h2, p, .title-bar-text');
+      textElems.forEach(el => (el.style.color = '#111'));
+    }
+
+    // Show the audio notice overlay on every visit; play the intro video only on first visit.
+    function continueApp() {
+      if (isMobileDevice) showMobileBlockScreenScoped(); else startEverything();
+    }
+
+    // always show the audio notice; pass `isFirstVisit` so the intro video can be gated
+    showSoundWarning(continueApp, isFirstVisit);
+
+    // Sound warning / audio-notice dialog (always shown). `playIntro` controls whether the intro video runs.
+    function showSoundWarning(onDone, playIntro = false) {
+      // ensure 7.css scoped stylesheet is loaded so the dialog uses Win7 styles
+      const scopedHref = 'https://unpkg.com/7.css/dist/7.scoped.css';
+      const hasScoped = [...document.styleSheets].some(s => s.href && s.href.includes('7.css/dist/7.scoped.css'));
+
+  const createOverlay = () => {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.zIndex = '2147483650';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.background = 'transparent';
+
+  // background video (muted) for the warning screen — plays silently and loops
+  const bgVideo = document.createElement('video');
+  bgVideo.src = 'videos/bg.mp4';
+  bgVideo.autoplay = true;
+  bgVideo.muted = true; // muted so browsers allow autoplay
+  bgVideo.loop = true;
+  bgVideo.playsInline = true;
+  bgVideo.preload = 'auto';
+  bgVideo.style.position = 'absolute';
+  bgVideo.style.inset = '0';
+  bgVideo.style.width = '100%';
+  bgVideo.style.height = '100%';
+  bgVideo.style.objectFit = 'cover';
+  bgVideo.style.zIndex = '2147483650';
+  bgVideo.style.opacity = '1';
+  // darken the video so dialog text remains readable
+  bgVideo.style.filter = 'brightness(.46)';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'win7';
+  wrapper.style.maxWidth = '560px';
+  wrapper.style.width = 'min(95%, 560px)';
+  wrapper.style.zIndex = '2147483651';
+        wrapper.innerHTML = `
+          <div class="window active">
+            <div class="title-bar">
+              <div class="title-bar-text">Audio notice</div>
+            </div>
+            <div class="window-body has-space">
+              <div style="display:flex; gap:1rem; align-items:center;">
+                <img src="/images/icons/music.webp" alt="Audio" style="width:96px;height:96px;object-fit:contain;" />
+                <div>
+                  <p style="margin:0; color:#111;">This website plays audio. Please lower your volume if its on max, or unmute your device if its muted, before continuing.</p>
+                </div>
+              </div>
+              <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:1rem;">
+                <button id="sound-ok" class="default">Got it</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+  // append video behind the dialog
+  overlay.appendChild(bgVideo);
+  overlay.appendChild(wrapper);
+  // try to play (best-effort), log failures
+  bgVideo.play().catch(e => console.log('bg.mp4 autoplay blocked or failed:', e));
+        document.body.appendChild(overlay);
+
+        const ok = overlay.querySelector('#sound-ok');
+
+        if (ok) {
+          ok.addEventListener('click', async () => {
+            // remove the audio notice overlay
+            overlay.remove();
+
+            // If this is NOT the user's first visit, skip the intro video and continue immediately.
+            if (!playIntro) {
+              if (onDone) onDone();
+              return;
+            }
+
+            // play intro video fully (user-initiated click — allowed to play on first visit)
+            const vOverlay = document.createElement('div');
+            vOverlay.style.position = 'fixed';
+            vOverlay.style.inset = '0';
+            vOverlay.style.zIndex = '2147483660';
+            vOverlay.style.display = 'flex';
+            vOverlay.style.alignItems = 'center';
+            vOverlay.style.justifyContent = 'center';
+            vOverlay.style.background = '#000';
+
+            const video = document.createElement('video');
+            video.src = 'videos/weWereLiedTo.mp4';
+            video.autoplay = false; // we'll call play() explicitly
+            video.playsInline = true;
+            video.controls = false;
+            video.preload = 'auto';
+            video.volume = 0.25;
+            video.style.maxWidth = '100%';
+            video.style.maxHeight = '100%';
+            video.style.width = '100%';
+            video.style.height = '100%';
+
+            vOverlay.appendChild(video);
+            // initial background is black; we'll fade it to white near the end of the video
+            vOverlay.style.background = '#000';
+            vOverlay.style.transition = '';
+            document.body.appendChild(vOverlay);
+
+            try {
+              await video.play();
+            } catch (err) {
+              console.log('Intro video play failed or was blocked:', err);
+              // fall back to continuing the app
+              vOverlay.remove();
+              if (onDone) onDone();
+              return;
+            }
+
+            // fade overlay background to white between 0:47 and 0:49
+            let fadeStarted = false;
+            const fadeStart = 46.67;
+            const fadeDuration = 2; // seconds
+            const onTime = () => {
+              const t = video.currentTime;
+              if (!fadeStarted && t >= fadeStart) {
+                fadeStarted = true;
+                // trigger a smooth background transition to white that finishes at fadeStart + fadeDuration
+                vOverlay.style.transition = `background ${fadeDuration}s linear`;
+                vOverlay.style.background = '#fff';
+              }
+            };
+            video.addEventListener('timeupdate', onTime);
+
+            // when video ends, remove overlay and continue
+            video.addEventListener('ended', () => {
+              video.removeEventListener('timeupdate', onTime);
+              vOverlay.remove();
+              if (onDone) onDone();
+            }, { once: true });
+          });
+
+          // keyboard accessibility: Enter/Space should also activate
+          ok.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              ok.click();
+            }
+          });
+        }
+      };
+
+      if (hasScoped) {
+        createOverlay();
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = scopedHref;
+        link.crossOrigin = 'anonymous';
+        let called = false;
+        link.onload = () => { if (!called) { called = true; createOverlay(); console.log('7.scoped.css loaded for sound dialog'); } };
+        link.onerror = () => { if (!called) { called = true; console.log('Failed to load 7.scoped.css for sound dialog — falling back'); createOverlay(); } };
+        // fallback: ensure overlay shows even if stylesheet is slow
+        setTimeout(() => { if (!called) { called = true; console.log('7.scoped.css load timeout — showing dialog'); createOverlay(); } }, 800);
+        document.head.appendChild(link);
+      }
+    }
+  </script>
+<script>
+(function(){
+    // hide pre-welcome and start the welcome sequence
+    function hidePreWelcomeAndStartWelcome() {
+        // mark that welcome may now run
+        window._allowWelcome = true;
+        const pre = document.getElementById('pre-welcome-page');
+        if (pre) pre.style.display = 'none';
+        if (window.startWelcome) window.startWelcome();
+    }
+
+    const toggle = document.getElementById('merged-toggle');
+    const cont = document.getElementById('pre-welcome-continue');
+    if (!toggle && !cont) return;
+
+    // make toggle pop in once the pre-welcome page is visible
+    (function ensureToggleVisible() {
+        const pre = document.getElementById('pre-welcome-page');
+        const tryShow = () => {
+            if (pre && getComputedStyle(pre).display !== 'none') {
+                toggle.classList.remove('pre-pop');
+                toggle.classList.add('pop-in');
+                toggle.style.pointerEvents = 'auto';
+                return;
+            }
+            setTimeout(tryShow, 80);
+        };
+        tryShow();
+    })();
+
+    function triggerWhiteFlash() {
+        const overlay = document.createElement('div');
+        overlay.className = 'white-flash-overlay';
+        overlay.style.zIndex = 2147483647;
+        document.body.appendChild(overlay);
+
+        const rect = toggle.getBoundingClientRect();
+        const cx = Math.round(rect.left + rect.width/2);
+        const cy = Math.round(rect.top + rect.height/2);
+        const dx = Math.max(cx, window.innerWidth - cx);
+        const dy = Math.max(cy, window.innerHeight - cy);
+        const radius = Math.ceil(Math.sqrt(dx*dx + dy*dy));
+
+        overlay.getBoundingClientRect();
+        requestAnimationFrame(() => {
+            overlay.style.clipPath = `circle(${radius}px at ${cx}px ${cy}px)`;
+            overlay.style.opacity = '1';
+        });
+
+        let done = false;
+        overlay.addEventListener('transitionend', function() {
+            if (done) return; done = true;
+            overlay.remove();
+            hidePreWelcomeAndStartWelcome();
+        }, { once: true });
+
+        setTimeout(() => {
+            if (!done) { done = true; overlay.remove(); hidePreWelcomeAndStartWelcome(); }
+        }, 800);
+    }
+
+    function toggleState() {
+        const pressed = toggle.getAttribute('aria-pressed') === 'true';
+        toggle.setAttribute('aria-pressed', (!pressed).toString());
+        toggle.classList.remove('pre-pop');
+        toggle.classList.add('pop-in');
+        setTimeout(() => { triggerWhiteFlash(); }, 520);
+    }
+
+    toggle && toggle.addEventListener('click', toggleState);
+    cont && cont.addEventListener('click', hidePreWelcomeAndStartWelcome);
+    window.mergedTriggerWhiteFlash = triggerWhiteFlash;
+})();
+</script>
                     </div>
                 </div>
+
 
         <!-- Welcome Splash Screen -->
         <canvas id="welcome-splash" style="position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999;">
@@ -909,6 +2330,11 @@ OS: Horizon OS 1.0
             }
 
             function startWelcome() {
+                // only allow once portal has been cleared
+                if (!window._allowWelcome) {
+                    console.log('startWelcome blocked until pre-welcome cleared');
+                    return;
+                }
                 // If the pre-welcome page is still visible, defer starting the welcome
                 const preEl = document.getElementById('pre-welcome-page');
                 try {
