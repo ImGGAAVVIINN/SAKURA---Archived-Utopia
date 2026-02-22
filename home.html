@@ -905,8 +905,12 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
 
     // Audio setup with Web Audio API
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // expose context so we can close it later when welcome begins
+    window.portalAudioContext = audioContext;
     const audio = new Audio('sounds/portal.mp3');
     audio.loop = true;
+    // allow external code to pause/stop this portal music
+    window.portalAudio = audio;
   // small pop sound used for the pop-in animation
   const popSound = new Audio('sounds/pop.mp3');
   popSound.preload = 'auto';
@@ -1570,6 +1574,20 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
         document.body.classList.remove('is-flashed');
         const overlay = document.querySelector('.white-flash-overlay');
         if (overlay) overlay.remove();
+        // stop portal music if playing
+        try {
+            if (window.portalAudio) {
+                window.portalAudio.pause();
+                window.portalAudio.src = '';
+                window.portalAudio = null;
+            }
+            if (window.portalAudioContext) {
+                window.portalAudioContext.close().catch(() => {});
+                window.portalAudioContext = null;
+            }
+        } catch (e) {
+            console.log('error stopping portal audio', e);
+        }
         if (window.startWelcome) window.startWelcome();
     }
 
@@ -2365,6 +2383,18 @@ OS: Horizon OS 1.0
 
                 if (window._welcomeStarted) return;
                 window._welcomeStarted = true;
+                // fallback: stop portal audio if somehow still playing
+                try {
+                    if (window.portalAudio) {
+                        window.portalAudio.pause();
+                        window.portalAudio.src = '';
+                        window.portalAudio = null;
+                    }
+                    if (window.portalAudioContext) {
+                        window.portalAudioContext.close().catch(() => {});
+                        window.portalAudioContext = null;
+                    }
+                } catch (e) { console.log('error stopping portal audio in startWelcome', e); }
 
                 loadStoredVolume();
 
@@ -2434,30 +2464,6 @@ OS: Horizon OS 1.0
                                 bgVideo.style.zIndex = '2147483650';
                                 bgVideo.style.opacity = '1';
                                 bgVideo.style.filter = 'brightness(.46)';
-
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'win7';
-                                wrapper.style.maxWidth = '560px';
-                                wrapper.style.width = 'min(95%, 560px)';
-                                wrapper.style.zIndex = '2147483651';
-                                wrapper.innerHTML = `
-                                    <div class="window active">
-                                        <div class="title-bar">
-                                            <div class="title-bar-text">Audio notice</div>
-                                        </div>
-                                        <div class="window-body has-space">
-                                            <div style="display:flex; gap:1rem; align-items:center;">
-                                                <img src="/images/icons/music.webp" alt="Audio" style="width:96px;height:96px;object-fit:contain;" />
-                                                <div>
-                                                    <p style="margin:0; color:#111;">This website plays audio. Please lower your volume if its on max, or unmute your device if its muted, before continuing.</p>
-                                                </div>
-                                            </div>
-                                            <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:1rem;">
-                                                <button id="sound-ok" class="default">Got it</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
 
                                 overlay.appendChild(bgVideo);
                                 overlay.appendChild(wrapper);
