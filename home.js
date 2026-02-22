@@ -86,7 +86,7 @@ class IntroBubbleScreensaver {
         this.swapBubbleImage();
         this.imageSwapIntervalId = window.setInterval(() => {
             this.swapBubbleImage();
-        }, 5000);
+        }, 2000);
 
         let index = 0;
         while (index++ < 16) {
@@ -414,7 +414,85 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
         console.warn("SplitText plugin is unavailable; text split animations are disabled.");
     }
-    initWelcomeSplashGlass();
+    // delay the welcome canvas setup by 10 seconds to avoid racing with the
+    // audio notice / Got-it button
+    setTimeout(initWelcomeSplashGlass, 5000);
+
+    // define debug helper early so startWelcome() can call it immediately
+    let _debugStarted = false;
+    const startDebugLogSequence = () => {
+        if (_debugStarted) return;
+        _debugStarted = true;
+        const debugEl = document.getElementById('debugging');
+        if (!debugEl) return;
+
+        debugEl.style.fontFamily = "'Segoe UI Light', 'Frutiger', sans-serif";
+        debugEl.style.fontSize = '0.85rem';
+        debugEl.style.color = '#b8f6d1';
+        debugEl.style.lineHeight = '1.4';
+        debugEl.style.height = '2rem';
+        debugEl.style.overflow = 'hidden';
+
+        const lines = [
+            'Booting Horizon kernel...',
+            'Kernel ver: 4.8',
+            'Checking memory map...',
+            'Mounting user profiles...',
+            'Starting Plains Desktop Environment',
+            'Initializing compositor...',
+            'Loading audio stack...',
+            'Loading network stack...',
+            'Logging in user: Guest',
+            'Spawning UI shell...',
+            'Binding input drivers...',
+            'Syncing local clocks...',
+        ];
+
+        const errorCandidates = [
+            { chance: 0.12, text: 'Warning: audio bus drift detected, resyncing...' },
+            { chance: 0.09, text: 'Error: display handshake timeout, retrying...' },
+            { chance: 0.07, text: 'Warning: network route table stale, rebuilding...' },
+        ];
+
+        const delayBetween = () => 160 + Math.floor(Math.random() * 340);
+        const appendLine = (text, isError = false) => {
+            const line = document.createElement('div');
+            line.textContent = text;
+            if (isError) line.style.color = '#f3a6a6';
+            debugEl.appendChild(line);
+            const computedLineHeight = Number.parseFloat(getComputedStyle(debugEl).lineHeight) || 18;
+            const maxLines = Math.max(1, Math.floor(debugEl.clientHeight / computedLineHeight));
+            while (debugEl.children.length > maxLines) {
+                debugEl.removeChild(debugEl.firstChild);
+            }
+        };
+
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        const run = async () => {
+            debugEl.innerHTML = '';
+            let errorCount = 0;
+            const maxErrors = 2;
+            for (const line of lines) {
+                appendLine(line);
+                const error = errorCandidates.find((item) => Math.random() < item.chance);
+                if (error && errorCount < maxErrors) {
+                    await sleep(delayBetween());
+                    appendLine(error.text, true);
+                    errorCount += 1;
+                }
+                await sleep(delayBetween());
+            }
+            await sleep(1200);
+            appendLine('Welcome Home!');
+        };
+
+        run();
+    };
+    window.startDebugLogSequence = startDebugLogSequence;
+
+    // schedule the remainder of page initialization after a longer delay
+    setTimeout(() => {
 
     const introSection = document.querySelector('.intro');
     if (introSection && window.p5) {
@@ -580,78 +658,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Prevent browser from restoring scroll position on navigation/reload
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
-    let _debugStarted = false;
-    const startDebugLogSequence = () => {
-        if (_debugStarted) return;
-        _debugStarted = true;
-        const debugEl = document.getElementById('debugging');
-        if (!debugEl) return;
-
-        debugEl.style.fontFamily = "'Segoe UI Light', 'Frutiger', sans-serif";
-        debugEl.style.fontSize = '0.85rem';
-        debugEl.style.color = '#b8f6d1';
-        debugEl.style.lineHeight = '1.4';
-        debugEl.style.height = '2rem';
-        debugEl.style.overflow = 'hidden';
-
-        const lines = [
-            'Booting Horizon kernel...',
-            'Kernel ver: 4.8',
-            'Checking memory map...',
-            'Mounting user profiles...',
-            'Starting Plains Desktop Environment',
-            'Initializing compositor...',
-            'Loading audio stack...',
-            'Loading network stack...',
-            'Logging in user: Guest',
-            'Spawning UI shell...',
-            'Binding input drivers...',
-            'Syncing local clocks...',
-        ];
-
-        const errorCandidates = [
-            { chance: 0.12, text: 'Warning: audio bus drift detected, resyncing...' },
-            { chance: 0.09, text: 'Error: display handshake timeout, retrying...' },
-            { chance: 0.07, text: 'Warning: network route table stale, rebuilding...' },
-        ];
-
-        const delayBetween = () => 160 + Math.floor(Math.random() * 340);
-        const appendLine = (text, isError = false) => {
-            const line = document.createElement('div');
-            line.textContent = text;
-            if (isError) line.style.color = '#f3a6a6';
-            debugEl.appendChild(line);
-            const computedLineHeight = Number.parseFloat(getComputedStyle(debugEl).lineHeight) || 18;
-            const maxLines = Math.max(1, Math.floor(debugEl.clientHeight / computedLineHeight));
-            while (debugEl.children.length > maxLines) {
-                debugEl.removeChild(debugEl.firstChild);
-            }
-        };
-
-        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-        const run = async () => {
-            debugEl.innerHTML = '';
-            let errorCount = 0;
-            const maxErrors = 2;
-            for (const line of lines) {
-                appendLine(line);
-                const error = errorCandidates.find((item) => Math.random() < item.chance);
-                if (error && errorCount < maxErrors) {
-                    await sleep(delayBetween());
-                    appendLine(error.text, true);
-                    errorCount += 1;
-                }
-                await sleep(delayBetween());
-            }
-            await sleep(1200);
-            appendLine('Welcome Home!');
-        };
-
-        run();
-    };
-    // expose for other scripts
-    window.startDebugLogSequence = startDebugLogSequence;
+    // debug helper defined earlier, not needed again here
 
     // debug sequence will be started when the welcome splash is shown.
     // previously this ran on DOMContentLoaded, which meant the text began
@@ -974,6 +981,8 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('resize', updateScrollbarClass, { passive: true });
     window.addEventListener('load', updateScrollbarClass);
     setTimeout(updateScrollbarClass, 250);
+
+    }, 4000);
 });
 
 // Sticky taskbar behavior (copied from tmp/taskbarExample.js, adapted)
