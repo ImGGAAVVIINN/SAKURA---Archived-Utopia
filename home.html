@@ -48,6 +48,7 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
     width: 100%;
     height: 100%;
     background: #0b0b0b;
+    background-color: #ffffff;
     z-index: -1;
     overflow: hidden;
 }
@@ -67,11 +68,11 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
 
 .liquid-toggle { --height:30; --width:100; height: calc(var(--height)*1px); width: calc(var(--width)*1px); border-radius:3px; border:1px solid #8e8f8f; padding:0; cursor:pointer; position:relative; overflow:visible; background:#ddd; }
 .liquid-toggle .indicator { position:absolute; top:50%; left:50%; translate:-50% -50%; height:100%; width:100%; background:#00d82c; border-radius:3px; }
-.liquid-toggle.pre-pop { opacity:0; transform: translate3d(0,24px,0) scale(.6); filter:blur(6px); pointer-events:none; }
-/* Ensure the toggle is visible while inside the pre-welcome merged page (override the hidden pre-pop state) */
-#pre-welcome-page .liquid-toggle.pre-pop { opacity: 1 !important; transform: none !important; filter: none !important; pointer-events: auto !important; }
+.liquid-toggle.pre-pop { opacity:0; transform: translate(-50%, -50%) translate3d(0,24px,0) scale(.6); filter:blur(6px); pointer-events:none; }
+/* remove pre-welcome override: toggle stays hidden until we explicitly show it via JS */
+/* #pre-welcome-page .liquid-toggle.pre-pop { opacity: 1 !important; transform: none !important; filter: none !important; pointer-events: auto !important; } */
 .liquid-toggle.pop-in { animation-name: jello-pop; animation-duration: 900ms; animation-fill-mode:both; }
-@keyframes jello-pop { 0%{transform:translate3d(0,24px,0) scale(.6);opacity:0;filter:blur(6px);} 40%{transform:translate3d(0,-8px,0) scale(1.18);opacity:1;} 100%{transform:none;opacity:1;filter:none;} }
+@keyframes jello-pop { 0%{transform:translate(-50%, -50%) translate3d(0,24px,0) scale(.6);opacity:0;filter:blur(6px);} 40%{transform:translate(-50%, -50%) translate3d(0,-8px,0) scale(1.18);opacity:1;} 100%{transform:translate(-50%, -50%);opacity:1;filter:none;} }
 
 .white-flash-overlay { position: fixed; inset: 0; background: #fff; z-index: 99999; pointer-events: none; clip-path: circle(0px at 0px 0px); transition: clip-path 520ms cubic-bezier(.22,.9,.33,1), opacity 220ms linear; opacity:1; }
 
@@ -365,7 +366,7 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
   /* hidden pre-animation state so the control doesn't flash in before pop-in */
   .liquid-toggle.pre-pop {
     opacity: 0;
-    transform: translate3d(0, 24px, 0) scale(.6) skewX(0) skewY(0);
+    transform: translate(-50%, -50%) translate3d(0, 24px, 0) scale(.6) skewX(0) skewY(0);
     filter: blur(6px);
     pointer-events: none;
   }
@@ -527,26 +528,26 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
   /* Pop-in (watery jello) animation for the switch */
   @keyframes jello-pop {
     0% {
-      transform: translate3d(0, 24px, 0) scale(.6) skewX(0deg) skewY(0deg);
+      transform: translate(-50%, -50%) rotate(var(--rotation,0)) translate3d(0, 24px, 0) scale(.6) skewX(0deg) skewY(0deg);
       opacity: 0;
       filter: blur(6px);
     }
     40% {
-      transform: translate3d(0, -8px, 0) scale(1.18) skewX(-3deg) skewY(3deg);
+      transform: translate(-50%, -50%) rotate(var(--rotation,0)) translate3d(0, -8px, 0) scale(1.18) skewX(-3deg) skewY(3deg);
       opacity: 1;
       filter: blur(2px);
     }
     55% {
-      transform: translate3d(0, 8px, 0) scale(.92) skewX(3deg) skewY(-3deg);
+      transform: translate(-50%, -50%) rotate(var(--rotation,0)) translate3d(0, 8px, 0) scale(.92) skewX(3deg) skewY(-3deg);
     }
     70% {
-      transform: translate3d(0, -4px, 0) scale(1.06) skewX(-1.5deg) skewY(1.5deg);
+      transform: translate(-50%, -50%) rotate(var(--rotation,0)) translate3d(0, -4px, 0) scale(1.06) skewX(-1.5deg) skewY(1.5deg);
     }
     85% {
-      transform: translate3d(0, 2px, 0) scale(.99) skewX(.6deg) skewY(-.6deg);
+      transform: translate(-50%, -50%) rotate(var(--rotation,0)) translate3d(0, 2px, 0) scale(.99) skewX(.6deg) skewY(-.6deg);
     }
     100% {
-      transform: translate3d(0, 0, 0) scale(1) skewX(0) skewY(0);
+      transform: translate(-50%, -50%) rotate(var(--rotation,0)) translate3d(0, 0, 0) scale(1) skewX(0) skewY(0);
       opacity: 1;
       filter: none;
     }
@@ -744,10 +745,10 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
   <div class="lights-background" id="lightsContainer"></div>
   
   <main>
-        <div class="arrow arrow--main">
-          <span>Open the portal?</span>
+  <button id="merged-toggle" aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop" style="display:none;">
+        <div class="arrow arrow--main" style="margin-left: -150px; margin-top: -50px;">
+          <span style="color: #605E5FFF;">Open the portal?</span>
         </div>
-  <button id="merged-toggle" aria-label="toggle" aria-pressed="false" class="liquid-toggle pre-pop">
           <div class="debug debug--knockout">
             <div class="arrow">
               <span>knockout backdrop.</span>
@@ -872,6 +873,10 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
 
   // global flag to mute initial audio if user chose so on first run
   window.initiallyMuted = false;
+  // track whether the portal toggle animation has already been shown
+  window._toggleAnimationPlayed = window._toggleAnimationPlayed || false;
+  // if true, run animation when pre-welcome section is next shown
+  window._animateToggleOnPreShow = false;
 
   // main initialization — wrapped so we can delay it on mobile
   function startEverything() {
@@ -1155,58 +1160,29 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
       })();
     }
 
-      // Play watery jello "pop-in" animation on page start.
-      // Schedule it after load (or immediately if already loaded) so CSS and fonts have been applied.
+      // Helper invoked on demand to animate the portal toggle.  Most callers
+      // use `showPortalToggleOnce()`, but we keep this small wrapper for
+      // compatibility with older logic.
       const schedulePopIn = () => {
-        // don't run if user prefers reduced motion — but ensure toggle becomes visible
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          toggle.classList.remove('pre-pop');
-          return;
-        }
-        // small delay so browser can paint before animating
-        setTimeout(() => {
-          // prefer the robust trigger that falls back to WAAPI when needed
-          toggle.classList.remove('pre-pop');
-            if (window.triggerJello) {
-              window.triggerJello();
-            } else {
-              toggle.classList.remove('pop-in'); void toggle.offsetWidth; toggle.classList.add('pop-in');
-            }
-            // mark that we triggered the initial pop so defensive checks don't duplicate it
-            toggle.dataset.jelloTriggered = 'true';
-            setTimeout(() => toggle.removeAttribute('data-jello-triggered'), 2500);
-        }, 200);
+        if (window.showPortalToggleOnce) window.showPortalToggleOnce();
       };
 
-      if (document.readyState === 'complete') schedulePopIn();
-      else window.addEventListener('load', schedulePopIn, { once: true });
+      // previously we scheduled this on `load`; now calling is explicit when the
+      // portal section opens (via showPre) so no automatic listener is required.
+      // if (document.readyState === 'complete') schedulePopIn();
+      // else window.addEventListener('load', schedulePopIn, { once: true });
 
       // Ensure the toggle isn't left in a broken pre-pop state.
       // Sometimes when first-run dialogs/videos run, the initial reveal can get skipped —
       // we defensively reset and retrigger the pop-in a short time after initialization.
       function ensureToggleHealthy() {
-        const el = document.querySelector('.liquid-toggle');
-        if (!el) return;
-        // don't re-trigger if we already ran the initial jello on load
-        if (el.dataset.jelloTriggered === 'true') return;
-        // Make sure it's visible and interactive
-        el.classList.remove('pre-pop');
-        el.style.opacity = '';
-        el.style.transform = '';
-        // Ensure aria attribute exists
-        if (!el.hasAttribute('aria-pressed')) el.setAttribute('aria-pressed', 'false');
-
-        // Try to trigger the pop-in robustly
-        if (window.triggerJello) {
-          try { window.triggerJello(); } catch (e) { /* ignore */ }
-        } else {
-          el.classList.remove('pop-in'); void el.offsetWidth; el.classList.add('pop-in');
+        // reuse the explicit show logic; if the portal is visible and we haven't
+        // animated yet, this will run the animation and set the flag.
+        const pre = document.getElementById('pre-welcome-page');
+        if (!pre || getComputedStyle(pre).display === 'none') return;
+        if (window.showPortalToggleOnce) {
+          window.showPortalToggleOnce();
         }
-
-        // Remove lingering animation class after a safe timeout
-        setTimeout(() => {
-          el.classList.remove('pop-in');
-        }, 1600);
       }
 
       // Run defensive check shortly after everything initializes and also expose for debugging
@@ -1466,6 +1442,9 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
 
         if (ok) {
           ok.addEventListener('click', async () => {
+            // mark that we want the portal toggle to animate when the pre section shows
+            window._animateToggleOnPreShow = true;
+
             // remove the audio notice overlay
             overlay.remove();
 
@@ -1595,20 +1574,23 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
     const cont = document.getElementById('pre-welcome-continue');
     if (!toggle && !cont) return;
 
-    // make toggle pop in once the pre-welcome page is visible
-    (function ensureToggleVisible() {
-        const pre = document.getElementById('pre-welcome-page');
-        const tryShow = () => {
-            if (pre && getComputedStyle(pre).display !== 'none') {
-                toggle.classList.remove('pre-pop');
-                toggle.classList.add('pop-in');
-                toggle.style.pointerEvents = 'auto';
-                return;
-            }
-            setTimeout(tryShow, 80);
-        };
-        tryShow();
-    })();
+    // ensure global flag is available
+    window._toggleAnimationPlayed = window._toggleAnimationPlayed || false;
+
+    // show toggle with animation once (called explicitly when portal appears)
+    function showPortalToggleOnce() {
+        if (!toggle || window._toggleAnimationPlayed) return;
+        window._toggleAnimationPlayed = true;
+        toggle.style.display = '';
+        toggle.classList.remove('pre-pop');
+        toggle.classList.add('pop-in');
+        toggle.style.pointerEvents = 'auto';
+        // remove animation class after it finishes, but keep element visible
+        toggle.addEventListener('animationend', () => {
+            toggle.classList.remove('pop-in');
+        }, { once: true });
+    }
+    window.showPortalToggleOnce = showPortalToggleOnce;
 
     function triggerWhiteFlash() {
         const overlay = document.createElement('div');
@@ -2574,6 +2556,10 @@ OS: Horizon OS 1.0
                                         }
                                         if (pre) {
                                                 pre.style.display = 'flex';
+                                                if (window._animateToggleOnPreShow && window.showPortalToggleOnce) {
+                                                    window.showPortalToggleOnce();
+                                                    window._animateToggleOnPreShow = false;
+                                                }
                                         }
                                 };
 
@@ -2581,7 +2567,7 @@ OS: Horizon OS 1.0
                                 try {
                                         showSoundWarning(showPre, isFirstVisit);
                                 } catch (e) {
-                                        // fallback: just show pre-welcome
+                                        // fallback: just show pre-welcome (no animation since user didn't click)
                                         showPre();
                                 }
                         });

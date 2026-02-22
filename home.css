@@ -198,6 +198,36 @@ html, body {
     transform-origin: center center;
 }
 
+/* ensure main container can be a positioning context for centered elements */
+main {
+    position: relative;
+}
+
+/* center the merged toggle button within its parent */
+#merged-toggle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(var(--rotation,0));
+}
+
+/* when arrow classes are placed on the toggle itself we need to
+   stop the arrow rules from affecting the button's layout */
+#merged-toggle.arrow--main {
+    /* reset positioning overrides from .arrow--main */
+    right: auto !important;
+    left: 50% !important;
+    top: 50% !important;
+    --rotation: 0; /* don't rotate the toggle itself */
+}
+
+/* make sure the nested arrow inside the toggle can still be positioned
+   and rotated as before */
+#merged-toggle .arrow.arrow--main {
+    right: 120%;
+    rotate: -30deg;
+}
+
 .glass-icon-top-row {
     display: flex;
     align-items: center;
