@@ -86,7 +86,7 @@ class IntroBubbleScreensaver {
         this.swapBubbleImage();
         this.imageSwapIntervalId = window.setInterval(() => {
             this.swapBubbleImage();
-        }, 2000);
+        }, 3000);
 
         let index = 0;
         while (index++ < 16) {
@@ -982,7 +982,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('load', updateScrollbarClass);
     setTimeout(updateScrollbarClass, 250);
 
-    }, 4000);
+    }, 10000);
 });
 
 // Sticky taskbar behavior (copied from tmp/taskbarExample.js, adapted)
