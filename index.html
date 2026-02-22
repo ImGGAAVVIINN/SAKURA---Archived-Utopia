@@ -367,8 +367,15 @@
         const redirectAfterFade = () => {
           if (redirected) return;
           redirected = true;
-          // let the white screen sit briefly so it feels intentional
-          setTimeout(() => { window.location.href = 'home.html'; }, 220);
+          // hide the portal overlay and start the welcome sequence
+          window._allowWelcome = true;
+          const pre = document.getElementById('pre-welcome-page');
+          if (pre) pre.style.display = 'none';
+          if (window.startWelcome) {
+              window.startWelcome();
+          } else if (window.startEverything) {
+              window.startEverything();
+          }
         };
 
         if (!activate) {

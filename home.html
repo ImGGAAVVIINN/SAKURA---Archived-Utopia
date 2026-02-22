@@ -1023,10 +1023,12 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
         const body = document.body;
         let redirected = false;
         const redirectAfterFade = () => {
-          // no-op: portal progression is managed by the click handler script
-          // keep the flag in case the animation fires multiple times
           if (redirected) return;
           redirected = true;
+          // also hide pre-welcome and start welcome if available
+          if (typeof hidePreWelcomeAndStartWelcome === 'function') {
+              hidePreWelcomeAndStartWelcome();
+          }
         };
 
         if (!activate) {
@@ -1564,6 +1566,10 @@ body, #pre-welcome-page { font-family: 'Frutiger', sans-serif; }
         window._allowWelcome = true;
         const pre = document.getElementById('pre-welcome-page');
         if (pre) pre.style.display = 'none';
+        // clear any white‑flash remnants so the welcome screen is visible
+        document.body.classList.remove('is-flashed');
+        const overlay = document.querySelector('.white-flash-overlay');
+        if (overlay) overlay.remove();
         if (window.startWelcome) window.startWelcome();
     }
 
