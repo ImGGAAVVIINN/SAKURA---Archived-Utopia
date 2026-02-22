@@ -86,7 +86,7 @@ class IntroBubbleScreensaver {
         this.swapBubbleImage();
         this.imageSwapIntervalId = window.setInterval(() => {
             this.swapBubbleImage();
-        }, 2000);
+        }, 1000);
 
         let index = 0;
         while (index++ < 16) {
