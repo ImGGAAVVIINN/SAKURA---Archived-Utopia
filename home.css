@@ -193,6 +193,14 @@ html, body {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.4rem;
+
+    /* default placement – JS will override as soon as it runs, but
+       having a reasonable center defaults helps when the script fails
+       or hasn't executed yet */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
     /* Start hidden; JS will position it */
     opacity: 0;
     transform-origin: center center;

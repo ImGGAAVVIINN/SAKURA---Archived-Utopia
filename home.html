@@ -2399,6 +2399,12 @@ OS: Horizon OS 1.0
                     welcomeProgressBar.style.opacity = '1';
                 }
 
+                // start debug log only now that the welcome UI is visible
+                if (window.startDebugLogSequence) {
+                    // delay a tick so the splash has rendered
+                    setTimeout(window.startDebugLogSequence, 0);
+                }
+
                 welcomeAudio.play().catch(err => console.log('Audio play failed:', err));
                 welcomeAudio.addEventListener('ended', function() {
                     finishWelcome();

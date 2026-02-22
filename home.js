@@ -281,7 +281,10 @@ const initWelcomeSplashGlass = () => {
         const screenY = (canvas.height - glassPos.y) / ratio; // flip Y
         glassIconsContainer.style.left = screenX + 'px';
         glassIconsContainer.style.top = screenY + 'px';
+        // keep the centering transform even if JS big-steps values
         glassIconsContainer.style.transform = 'translate(-50%, -50%)';
+
+        // make sure the element becomes visible once animation begins
         if (glassAnimating) {
             glassIconsContainer.style.opacity = '1';
         }
@@ -296,10 +299,29 @@ const initWelcomeSplashGlass = () => {
     };
 
     // Expose a trigger for the fade callback to start the bounce-in
-    window._startGlassBounceIn = () => {
+    window._startGlassBounceIn = (options = {}) => {
+        // options.fallback = true when invoked by the fallback timer; that
+        // call simply moves the icon container to centre if the normal flow
+        // is broken. debugging is now handled separately by startWelcome.
+        const {fallback = false} = options;
         initGlassPosition(); // re-sync in case of resize
         glassAnimating = true;
+        // no debug logic here; startWelcome() will trigger it when appropriate
     };
+
+    // fallback: if for some reason the overlay logic never calls the start
+    // helper (e.g. #page-fade-overlay was removed earlier or during dev
+    // tweaking), make sure the bounce still happens after ~2s. This makes
+    // the icons move to centre even when the original trigger is skipped.
+    setTimeout(() => {
+        if (!glassAnimating && !glassArrived && window._startGlassBounceIn) {
+            console.warn('triggering fallback glass bounce-in');
+            window._startGlassBounceIn({fallback:true});
+            // note: do NOT start the debug log sequence here; the fallback
+            // should only move the icons in case the normal flow was broken.
+            // debug log must wait until the real welcome screen is visible.
+        }
+    }, 2000);
 
     const texture = gl.createTexture();
     let textureReady = false;
@@ -330,7 +352,18 @@ const initWelcomeSplashGlass = () => {
 
     const startTime = performance.now();
     const render = () => {
-        if (!document.body.contains(canvas) || canvas.style.display === "none") return;
+        // always update the glass container even if the WebGL canvas has
+        // been hidden/removed; the container follows the logical state and
+        // may still need to animate to its target position. This prevents
+        // a situation where the icons hang at the initial bottom offset
+        // because the render loop bail‑out runs before the bounce begins.
+        updateGlassImages();
+
+        if (!document.body.contains(canvas) || canvas.style.display === "none") {
+            // continue ticking so that updateGlassImages can keep working
+            requestAnimationFrame(render);
+            return;
+        }
         if (!textureReady) {
             requestAnimationFrame(render);
             return;
@@ -537,6 +570,9 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 fadeOverlay.remove();
                 if (window._startGlassBounceIn) window._startGlassBounceIn();
+                // debug sequence will be triggered within _startGlassBounceIn
+                // itself, so no need to call it here as well (flag guards
+                // duplicate invocations).
             }, 800);
         }, 100);
     }
@@ -544,7 +580,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Prevent browser from restoring scroll position on navigation/reload
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
+    let _debugStarted = false;
     const startDebugLogSequence = () => {
+        if (_debugStarted) return;
+        _debugStarted = true;
         const debugEl = document.getElementById('debugging');
         if (!debugEl) return;
 
@@ -611,8 +650,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         run();
     };
+    // expose for other scripts
+    window.startDebugLogSequence = startDebugLogSequence;
 
-    startDebugLogSequence();
+    // debug sequence will be started when the welcome splash is shown.
+    // previously this ran on DOMContentLoaded, which meant the text began
+    // before the user ever saw the debug container. We'll trigger it later
+    // after the overlay fades and the glass begins bouncing.
 
     const lenis = new Lenis();
     lenis.on("scroll", ScrollTrigger.update);
